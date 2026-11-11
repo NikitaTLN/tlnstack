@@ -16,7 +16,6 @@ Install these, then continue. Versions are the ones on `alarm`; newer is fine.
 | `claude` | Claude Code | `npm i -g @anthropic-ai/claude-code` |
 | `codex` | Codex | `npm i -g @openai/codex` |
 | `opencode` | OpenCode | `npm i -g opencode-ai` |
-| `op` | 1Password CLI (optional) | package manager |
 | T3 Code | the control surface | the app, then link the machine |
 
 Sign in to Tailscale so the CLI proxy on `raspberrypi` and the other machines
@@ -112,9 +111,9 @@ Get the token from an existing machine or from the credential store (see
 
 ## 6. T3 Code secrets
 
-In T3 Code, open **Settings → Secrets** on the machine running the server. Add a
-provider if 1Password is in use. From then on, agents call `request_secret`
-instead of asking in chat. See `docs/credentials.md`.
+In T3 Code, open **Settings → Secrets** on the machine running the server. From
+then on, agents call `request_secret` instead of asking in chat. See
+`docs/credentials.md`.
 
 ## 7. Verify
 

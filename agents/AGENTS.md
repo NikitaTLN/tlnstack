@@ -61,12 +61,9 @@ one. Get it from T3 Code's secure credential store first.
    - `value` only when the user already pasted it and no card is wanted.
    - Handle `declined`, `cancelled`, and `timed_out`; re-ask with a new
      `clientRequestId` only when still needed.
-2. **1Password provider.** If the environment has a 1Password provider
-   configured, the card also lets the user pick a reference such as
-   `op://vault/item/field` instead of typing the value.
-3. **Harness secret mechanism.** Outside T3 Code, use the harness's own secret
-   or keyring facility. Prefer `op read` when 1Password is signed in.
-4. **Chat ask (last resort).** Only when nothing above exists. Ask for one
+2. **Harness secret mechanism.** Outside T3 Code, use the harness's own secret
+   or keyring facility.
+3. **Chat ask (last resort).** Only when nothing above exists. Ask for one
    secret at a time, use it once, never echo it, and never write it to a file
    that is committed.
 
@@ -78,8 +75,10 @@ Full guide: `~/Projects/tlnstack/docs/credentials.md`.
 # Git and branches
 
 - Never commit to `main` in a project repo. Work on a task branch or worktree.
-- In `onlytuz`, follow the repository's own `AGENTS.md` and the `git-workflow`
-  skill. Branch, worktree, commit, push, PR, and release rules are there.
+- Read the repository's own `AGENTS.md` / `CLAUDE.md` first when it exists; it
+  wins over this file.
+- The `git-workflow` skill has the branch, worktree, commit, push, PR, and
+  release rules.
 - This personal config repo (`tlnstack`) is the exception: it tracks `main`
   directly, like a dotfiles repo.
 - Full workflow: `~/Projects/tlnstack/docs/git.md` and
@@ -87,10 +86,9 @@ Full guide: `~/Projects/tlnstack/docs/credentials.md`.
 
 # Pull requests
 
-- File a real PR, not a draft.
-- Title: concise, says why the change matters.
-- Description: lead with the problem, then the fix. Don't start with a list of
-  file changes.
+- File every PR with the `file-pr` skill. It has the title and description
+  conventions.
+- File a real PR, not a draft, so review bots run.
 - Check the change against the diff before filing.
 
 # Council (personal settings for the tstack `council` skill)

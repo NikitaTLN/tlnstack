@@ -21,6 +21,7 @@ Theo's skills, cloned to `~/.local/share/tstack` and installed by `tstack-sync`.
 `full-send`, `full-stop`, `council`, `sol-loop`, `file-pr`, `babysit-pr`,
 `takeover`, `modernize`, `leaving-pr-comments`.
 
+`file-pr` is used by default for every PR. `babysit-pr` watches one when asked.
 Personal settings for these (council members, PR style) live in
 `agents/AGENTS.md`, so the skills can be updated without losing them.
 

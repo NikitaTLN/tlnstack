@@ -3,9 +3,8 @@
 Agents never ask for a secret in chat and never invent one. The rule, in order:
 
 1. T3 Code secret store (`request_secret`)
-2. 1Password provider (a reference instead of a value)
-3. The harness's own secret/keyring facility, or `op read`
-4. A chat ask, only when nothing else exists, one secret at a time
+2. The harness's own secret or keyring facility
+3. A chat ask, only when nothing else exists, one secret at a time
 
 This applies to API keys, tokens, webhook signing secrets, device host tokens,
 and login passwords, including the **`sudo` password** on a machine that is not
@@ -55,37 +54,17 @@ Never `cat` the file, never put its path in the transcript, and treat it as gone
 after 24 hours. On a headless machine with no card UI reachable, fall through to
 the next option.
 
-### 1Password provider
+## 2. Fallback outside T3 Code
 
-T3 Code can read credentials from 1Password through the `op` CLI, so only a
-reference is stored. Set it up in **Settings → Secrets → Add provider** on the
-machine that runs the T3 Code server. Credential fields then accept
-`op://vault/item/field`.
-
-- On a headless or remote server (the Raspberry Pi), sign `op` in with a
-  **service account** (`OP_SERVICE_ACCOUNT_TOKEN`) or a **1Password Connect**
-  server (`OP_CONNECT_HOST` / `OP_CONNECT_TOKEN`). A desktop sign-in asks for
-  approval on the server's machine, which a remote user cannot answer.
-- When the card offers it, pick the provider and enter the reference instead of
-  typing the value.
-
-Docs: `docs/user/secrets.md`, `secrets-1password-service-account.md`, and
-`secrets-1password-connect.md` in `pingdotgg/t3code`.
-
-## 3. Fallback outside T3 Code
-
-- Claude Code / Codex outside T3: use the harness's own secret handling if it
-  has one; otherwise use the OS keyring.
-- 1Password CLI, signed in: `op read "op://vault/item/field"` inside the command
-  that needs it. Do not echo the result.
+- Use the harness's own secret handling if it has one; otherwise the OS keyring.
 - `gh`, `npm`, `cargo`, and `git` credentials live in their own stores. Prefer
   those over passing a token by hand.
 
-## 4. Chat ask, last resort
+## 3. Chat ask, last resort
 
-Only when the store, a provider, and the harness have nothing. Ask for one
-secret, say exactly what it is for, use it once, never echo it, and never write
-it into a committed file.
+Only when the store and the harness have nothing. Ask for one secret, say
+exactly what it is for, use it once, never echo it, and never write it into a
+committed file.
 
 ## Never
 

@@ -30,8 +30,9 @@ request / issue
 
 ## Starting work
 
-- Read the repository's own `AGENTS.md` / `CLAUDE.md` first; it wins over this
-  file. In `onlytuz`, also read `docs/agents/*`.
+- Read the repository's own `AGENTS.md` / `CLAUDE.md` first when it exists; it
+  wins over this file. If it points at more docs (for example `docs/agents/*`),
+  read those too.
 - Read the request in full: the thread, the issue, the PR body, and my own
   earlier promises. Do not work from memory.
 - Fetch the base before deciding anything is up to date.
@@ -86,6 +87,8 @@ Put the checklist in the PR body and the final report.
 - Stage named paths only. Never `git add -A`.
 - Push with `git push -u origin HEAD`, never plain `--force`.
 - Look for an existing PR first; update it instead of opening a second.
+- File it with the `file-pr` skill, which has the title and description
+  conventions.
 - In T3 Code, `link_pull_request` with the full URL right away, for every layer
   of a stack.
 - Wait with `watch_pull_request`, then end the turn. Never sleep or poll.
@@ -118,7 +121,7 @@ X/Y/Z is by the size of the change, not a reflex. Merging publishes a live build
 
 ## Credentials
 
-T3 Code's secret store first, then 1Password, then the harness, then a chat ask.
+T3 Code's secret store first, then the harness's own facility, then a chat ask.
 Details in `docs/credentials.md`.
 
 ## Skills

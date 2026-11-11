@@ -63,8 +63,8 @@ Run `npm ci` in a new worktree; dependencies and build output are per worktree.
 4. **Commit** — review the whole diff, `git diff --check`, run the checks, stage
    named paths, `type(scope): summary`.
 5. **Push** — `git push -u origin HEAD`; confirm the remote SHA matches.
-6. **PR** — reuse an existing PR, check the base, read the diff, follow
-   `.github/pull_request_template.md`, open a real PR, `link_pull_request`.
+6. **PR** — reuse an existing PR, check the base, read the diff, file it with
+   the `file-pr` skill, then `link_pull_request`.
 7. **Wait** — `watch_pull_request` (T3) or `gh pr checks <n> --watch`. Fix real
    findings and push again.
 8. **Merge** — recheck requirements, then
