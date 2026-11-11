@@ -20,9 +20,10 @@ request / issue
 
 ## Harnesses and machines
 
-- Agents run through **T3 Code**. Claude Code goes through `~/.claude-hub`,
-  Codex through `~/.codex-hub`, both pointing at the CLI proxy on the Raspberry
-  Pi. OpenCode runs natively.
+- Agents run through **T3 Code**. Claude Code has a native config
+  (`~/.claude`) and a hub config (`~/.claude-hub`); Codex has `~/.codex` and
+  `~/.codex-hub`. The `-hub` folders route through the CLI proxy on the
+  Raspberry Pi, the plain folders sign in directly. OpenCode runs natively.
 - Every harness gets the same global instructions (this repo's
   `agents/AGENTS.md`) and the same skills.
 - Machine inventory and paths: `docs/machines.md`.

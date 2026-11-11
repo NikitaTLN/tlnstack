@@ -42,8 +42,9 @@ run `tlnstack sync`, commit, and push. Do not edit an installed copy directly.
 
 ## The stack
 
-- **Harnesses**: Claude Code (via `~/.claude-hub`), Codex (via `~/.codex-hub`),
-  OpenCode (native). All point at the CLI proxy on the Raspberry Pi.
+- **Harnesses**: Claude Code (native `~/.claude`, or hub `~/.claude-hub` through
+  the CLI proxy), Codex (native `~/.codex`, or hub `~/.codex-hub`), OpenCode
+  (native). The proxy is the Raspberry Pi on port 8317.
 - **Skills**: mine (`skills/` here), Theo's (`t3dotgg/tstack`), Matt Pocock's
   (`mattpocock/skills`), plus the Claude plugin skills and Omarchy's.
 - **Credentials**: agents use T3 Code's secret store first, never a chat ask.

@@ -1,9 +1,15 @@
 # Default setup
 
-- Default to the CLI proxy hub. Claude Code runs through `~/.claude-hub` and
-  Codex runs through `~/.codex-hub`. Both point at the CLI proxy on the
-  Raspberry Pi. Look for config, instructions, and skills there first.
-- `~/.claude` and `~/.codex` mirror the hub folders. Keep them the same.
+- I use a **CLI proxy** for Claude Code and Codex, served from the Raspberry Pi
+  on port 8317. The `-hub` suffix marks the config that goes through it:
+  `~/.claude-hub` and `~/.codex-hub`.
+- `~/.claude` and `~/.codex` are the **native** configs, signed in to Claude and
+  ChatGPT directly. They are a different thing from the hub folders, not a copy
+  of them. `settings.json` and `config.toml` differ; the instructions and skills
+  are the same in both.
+- Instructions and skills are installed in both the native and hub folders. When
+  a harness runs through the proxy it reads the `-hub` folder, so look there
+  first for its config.
 - OpenCode runs natively; its global instructions live in
   `~/.config/opencode/AGENTS.md`.
 - This file is installed by **tlnstack** (`~/Projects/tlnstack`). Edit it in the

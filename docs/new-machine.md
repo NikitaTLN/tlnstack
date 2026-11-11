@@ -86,8 +86,12 @@ committed.
 
 ## 4. Hub configuration
 
-Claude Code and Codex run through the CLI proxy hub on the Raspberry Pi. Their
-config carries a bearer token, so it is not in this repo. Set it up per machine:
+Claude Code and Codex each have two configs: the **native** one
+(`~/.claude`, `~/.codex`) signed in to Claude and ChatGPT directly, and the
+**hub** one (`~/.claude-hub`, `~/.codex-hub`) that routes through the CLI proxy
+on the Raspberry Pi. tlnstack installs the instructions and skills into both.
+Only the hub configs carry the proxy settings and the bearer token, so they are
+not in this repo. Set them up per machine:
 
 - `~/.claude-hub/settings.json` — `ANTHROPIC_BASE_URL` set to
   `https://raspberrypi.tailadf79f.ts.net:8317` and the auth token.

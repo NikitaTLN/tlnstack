@@ -20,10 +20,10 @@ Linux (`alarm`):
 
 | Thing | Path |
 | --- | --- |
-| Claude Code global config | `~/.claude/CLAUDE.md`, `~/.claude/settings.json` |
-| Claude Code hub | `~/.claude-hub/CLAUDE.md`, `~/.claude-hub/settings.json` |
-| Codex global config | `~/.codex/AGENTS.md`, `~/.codex/config.toml` |
-| Codex hub | `~/.codex-hub/AGENTS.md`, `~/.codex-hub/config.toml` |
+| Claude Code native config | `~/.claude/CLAUDE.md`, `~/.claude/settings.json` |
+| Claude Code hub (CLI proxy) | `~/.claude-hub/CLAUDE.md`, `~/.claude-hub/settings.json` |
+| Codex native config | `~/.codex/AGENTS.md`, `~/.codex/config.toml` |
+| Codex hub (CLI proxy) | `~/.codex-hub/AGENTS.md`, `~/.codex-hub/config.toml` |
 | OpenCode global config | `~/.config/opencode/AGENTS.md` |
 | Skills | `~/.claude/skills`, `~/.claude-hub/skills`, `~/.codex/skills`, `~/.codex-hub/skills` |
 | tstack clone | `~/.local/share/tstack` |
@@ -42,6 +42,10 @@ Windows (`w1dget`):
 | PowerShell `npm` shim | `npm.cmd` (`npm.ps1` is blocked) |
 
 ## CLI proxy hub
+
+The `-hub` folders are the configs that route through the CLI proxy. The plain
+`~/.claude` and `~/.codex` are the native configs and are separate; only
+`settings.json` / `config.toml` differ, not the instructions or skills.
 
 - Claude Code: `~/.claude-hub/settings.json` sets `ANTHROPIC_BASE_URL` to
   `https://raspberrypi.tailadf79f.ts.net:8317` and an auth token.
