@@ -1,0 +1,354 @@
+#!/usr/bin/env bash
+# tlnstack - install this repo's agent instructions and personal skills on a
+# machine, and keep them in step with the repo.
+#
+# Usage: tlnstack [sync|check|capture] [--force] [--repo DIR]
+#
+#   sync (default)  copy the repo's files into every target, backing up what is
+#                   already there. A target with local edits is skipped.
+#   --check         show what sync would do; write nothing.
+#   --capture       copy an installed file that was edited by hand back into the
+#                   repo, so it can be committed. Refuses when targets disagree.
+#   --force         overwrite a target that has local edits.
+#
+# Targets
+#   instructions: ~/.claude/CLAUDE.md, ~/.claude-hub/CLAUDE.md,
+#                 ~/.codex/AGENTS.md, ~/.codex-hub/AGENTS.md,
+#                 ~/.config/opencode/AGENTS.md
+#   skills:       ~/.claude/skills, ~/.claude-hub/skills,
+#                 ~/.codex/skills, ~/.codex-hub/skills
+#
+# A skill is only overwritten when the installed copy still matches what the
+# last sync installed. Hand edits are reported and left alone unless --force.
+#
+# Environment overrides: TLNSTACK_REPO, TLNSTACK_STATE, TLNSTACK_BIN,
+# TLNSTACK_CLAUDE_DIR, TLNSTACK_CLAUDE_HUB_DIR, TLNSTACK_CODEX_DIR,
+# TLNSTACK_CODEX_HUB_DIR, TLNSTACK_OPENCODE_DIR.
+set -euo pipefail
+
+self=$(readlink -f "${BASH_SOURCE[0]}")
+REPO="${TLNSTACK_REPO:-$(cd "$(dirname "$self")/.." && pwd)}"
+STATE="${TLNSTACK_STATE:-$HOME/.local/state/tlnstack-sync}"
+BACKUPS="$STATE/backups"
+BIN_DIR="${TLNSTACK_BIN:-$HOME/.local/bin}"
+
+CLAUDE_DIR="${TLNSTACK_CLAUDE_DIR:-$HOME/.claude}"
+CLAUDE_HUB_DIR="${TLNSTACK_CLAUDE_HUB_DIR:-$HOME/.claude-hub}"
+CODEX_DIR="${TLNSTACK_CODEX_DIR:-$HOME/.codex}"
+CODEX_HUB_DIR="${TLNSTACK_CODEX_HUB_DIR:-$HOME/.codex-hub}"
+OPENCODE_DIR="${TLNSTACK_OPENCODE_DIR:-$HOME/.config/opencode}"
+
+INSTRUCTION_TARGETS=(
+  "$CLAUDE_DIR/CLAUDE.md"
+  "$CLAUDE_HUB_DIR/CLAUDE.md"
+  "$CODEX_DIR/AGENTS.md"
+  "$CODEX_HUB_DIR/AGENTS.md"
+  "$OPENCODE_DIR/AGENTS.md"
+)
+SKILL_TARGETS=(
+  "$CLAUDE_DIR/skills"
+  "$CLAUDE_HUB_DIR/skills"
+  "$CODEX_DIR/skills"
+  "$CODEX_HUB_DIR/skills"
+)
+
+MODE=sync
+FORCE=0
+
+usage() {
+  cat <<'EOF'
+tlnstack - install this repo's agent instructions and personal skills.
+
+Usage: tlnstack [sync|check|capture] [--force] [--repo DIR]
+
+  sync (default)  copy the repo's files into every target, backing up what is
+                  already there. A target with local edits is skipped.
+  --check         show what sync would do; write nothing.
+  --capture       copy an installed file that was edited by hand back into the
+                  repo, so it can be committed. Refuses when targets disagree.
+  --force         overwrite a target that has local edits.
+  --repo DIR      use DIR as the repo root (default: this script's repo).
+
+Targets
+  instructions: ~/.claude/CLAUDE.md, ~/.claude-hub/CLAUDE.md,
+                ~/.codex/AGENTS.md, ~/.codex-hub/AGENTS.md,
+                ~/.config/opencode/AGENTS.md
+  skills:       ~/.claude/skills, ~/.claude-hub/skills,
+                ~/.codex/skills, ~/.codex-hub/skills
+EOF
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    sync) MODE=sync ;;
+    check|--check) MODE=check ;;
+    capture|--capture) MODE=capture ;;
+    --force) FORCE=1 ;;
+    --repo) shift; REPO="${1:?--repo needs a directory}" ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "tlnstack: unknown option: $1" >&2; usage >&2; exit 2 ;;
+  esac
+  shift
+done
+
+SRC_INSTRUCTIONS="$REPO/agents/AGENTS.md"
+SRC_SKILLS="$REPO/skills"
+
+if [ ! -f "$SRC_INSTRUCTIONS" ]; then
+  echo "tlnstack: $SRC_INSTRUCTIONS not found (is TLNSTACK_REPO right?)" >&2
+  exit 1
+fi
+
+file_hash() { sha256sum "$1" | cut -d' ' -f1; }
+tree_hash() { (cd "$1" && find . -type f -print0 | sort -z | xargs -0 -r sha256sum | sha256sum) | cut -d' ' -f1; }
+slug() { printf '%s' "$1" | sha256sum | cut -c1-12; }
+
+record_path() { printf '%s/%s' "$STATE" "$1"; }
+
+backup() {
+  local path="$1"
+  mkdir -p "$BACKUPS"
+  local stamp
+  stamp=$(date +%Y%m%d-%H%M%S)
+  cp -a "$path" "$BACKUPS/$(basename "$path").$stamp.$(slug "$path")"
+}
+
+# Classify one target against the repo source and the last install record.
+# Echoes one of: install current update adopt local-edit.
+#   adopt: the target exists but has no record, so tlnstack has never managed
+#          it. First run takes it over (with a backup).
+classify_file() {
+  local src="$1" dest="$2" record="$3"
+  local new; new=$(file_hash "$src")
+  if [ ! -e "$dest" ]; then
+    echo install; return
+  fi
+  local cur recorded
+  cur=$(file_hash "$dest")
+  recorded=$(cat "$record" 2>/dev/null || true)
+  if [ "$cur" = "$new" ]; then echo current
+  elif [ -z "$recorded" ]; then echo adopt
+  elif [ "$cur" = "$recorded" ]; then echo update
+  else echo local-edit
+  fi
+}
+
+classify_tree() {
+  local src="$1" dest="$2" record="$3"
+  local new; new=$(tree_hash "$src")
+  if [ ! -e "$dest" ]; then
+    echo install; return
+  fi
+  local cur recorded
+  cur=$(tree_hash "$dest")
+  recorded=$(cat "$record" 2>/dev/null || true)
+  if [ "$cur" = "$new" ]; then echo current
+  elif [ -z "$recorded" ]; then echo adopt
+  elif [ "$cur" = "$recorded" ]; then echo update
+  else echo local-edit
+  fi
+}
+
+install_file() {
+  local src="$1" dest="$2" record="$3"
+  local new; new=$(file_hash "$src")
+  mkdir -p "$(dirname "$dest")"
+  [ -e "$dest" ] && backup "$dest"
+  cp -f "$src" "$dest"
+  mkdir -p "$STATE"
+  printf '%s\n' "$new" > "$record"
+}
+
+install_tree() {
+  local src="$1" dest="$2" record="$3"
+  local new; new=$(tree_hash "$src")
+  [ -e "$dest" ] && backup "$dest"
+  rm -rf "$dest"
+  mkdir -p "$dest"
+  cp -a "$src/." "$dest/"
+  mkdir -p "$STATE"
+  printf '%s\n' "$new" > "$record"
+}
+
+touch_record() {
+  local src="$1" record="$2" new
+  new=$(file_hash "$src")
+  mkdir -p "$STATE"
+  printf '%s\n' "$new" > "$record"
+}
+
+touch_tree_record() {
+  local src="$1" record="$2" new
+  new=$(tree_hash "$src")
+  mkdir -p "$STATE"
+  printf '%s\n' "$new" > "$record"
+}
+
+link_self() {
+  [ -d "$BIN_DIR" ] || mkdir -p "$BIN_DIR" 2>/dev/null || return 0
+  local link="$BIN_DIR/tlnstack"
+  if [ "$(readlink -f "$link" 2>/dev/null || true)" != "$self" ]; then
+    ln -sf "$self" "$link" 2>/dev/null || return 0
+    echo "linked   $link -> $self"
+  fi
+}
+
+changed=0
+skipped=0
+
+do_sync() {
+  local check=0
+  [ "$MODE" = check ] && check=1
+
+  echo "repo: $REPO"
+
+  local dest record action
+  for dest in "${INSTRUCTION_TARGETS[@]}"; do
+    record=$(record_path "inst-$(slug "$dest")")
+    action=$(classify_file "$SRC_INSTRUCTIONS" "$dest" "$record")
+    if [ "$action" = local-edit ] && [ "$FORCE" = 1 ]; then action=update; fi
+    if [ "$check" = 0 ]; then
+      case "$action" in
+        install|update|adopt) install_file "$SRC_INSTRUCTIONS" "$dest" "$record" ;;
+        current) touch_record "$SRC_INSTRUCTIONS" "$record" ;;
+        local-edit) skipped=$((skipped+1)) ;;
+      esac
+    else
+      if [ "$action" = local-edit ]; then skipped=$((skipped+1)); fi
+    fi
+    case "$action" in install|update|adopt) changed=$((changed+1)) ;; esac
+    printf '%-10s %s\n' "$action" "$dest"
+  done
+
+  local src name target tree
+  for src in "$SRC_SKILLS"/*/; do
+    [ -d "$src" ] || continue
+    name=$(basename "$src")
+    for target in "${SKILL_TARGETS[@]}"; do
+      if [ ! -d "$target" ]; then
+        printf '%-10s %s (%s missing)\n' skip "$name" "$target"
+        continue
+      fi
+      dest="$target/$name"
+      record=$(record_path "skill-$(slug "$dest")")
+      action=$(classify_tree "$src" "$dest" "$record")
+      if [ "$action" = local-edit ] && [ "$FORCE" = 1 ]; then action=update; fi
+      if [ "$check" = 0 ]; then
+        case "$action" in
+          install|update|adopt) install_tree "$src" "$dest" "$record" ;;
+          current) touch_tree_record "$src" "$record" ;;
+          local-edit) skipped=$((skipped+1)) ;;
+        esac
+      else
+        if [ "$action" = local-edit ]; then skipped=$((skipped+1)); fi
+      fi
+      case "$action" in install|update|adopt) changed=$((changed+1)) ;; esac
+      printf '%-10s %-16s %s\n' "$action" "$name" "$dest"
+    done
+  done
+
+  if [ "$check" = 1 ]; then
+    echo "(check only: nothing was written)"
+  else
+    link_self
+    echo "done: $changed changed, $skipped left alone (local edits)"
+    if [ "$skipped" -gt 0 ]; then
+      echo "re-run with --force to overwrite local edits; backups go to $BACKUPS"
+    fi
+  fi
+}
+
+do_capture() {
+  echo "repo: $REPO"
+
+  # Instructions: collect targets that were edited by hand (differ from both the
+  # repo and the last install record).
+  local -A seen=()
+  local dest record action cur
+  for dest in "${INSTRUCTION_TARGETS[@]}"; do
+    [ -e "$dest" ] || continue
+    record=$(record_path "inst-$(slug "$dest")")
+    action=$(classify_file "$SRC_INSTRUCTIONS" "$dest" "$record")
+    if [ "$action" = local-edit ]; then
+      cur=$(file_hash "$dest")
+      seen["$cur"]+="$dest "
+    fi
+  done
+  if [ "${#seen[@]}" -eq 0 ]; then
+    echo "instructions: nothing to capture (all targets match the repo)"
+  elif [ "${#seen[@]}" -eq 1 ]; then
+    local hash first=""
+    for hash in "${!seen[@]}"; do first="${seen[$hash]%% *}"; done
+    backup "$SRC_INSTRUCTIONS"
+    cp -f "$first" "$SRC_INSTRUCTIONS"
+    echo "instructions: captured $first -> $SRC_INSTRUCTIONS"
+    echo "             (from: ${seen[$hash]% })"
+  else
+    echo "instructions: targets disagree; resolve by hand" >&2
+    local h
+    for h in "${!seen[@]}"; do echo "  ${seen[$h]% }" >&2; done
+    return 1
+  fi
+
+  # Skills: same idea, per skill, including skills that exist only on a machine.
+  local src name target tree hash first
+  declare -A names=()
+  for src in "$SRC_SKILLS"/*/; do
+    [ -d "$src" ] || continue
+    names["$(basename "$src")"]=1
+  done
+  for target in "${SKILL_TARGETS[@]}"; do
+    [ -d "$target" ] || continue
+    for src in "$target"/*/; do
+      [ -d "$src" ] || continue
+      names["$(basename "$src")"]=1
+    done
+  done
+
+  local rc=0
+  for name in "${!names[@]}"; do
+    seen=()
+    for target in "${SKILL_TARGETS[@]}"; do
+      dest="$target/$name"
+      [ -d "$dest" ] || continue
+      record=$(record_path "skill-$(slug "$dest")")
+      if [ -d "$SRC_SKILLS/$name" ]; then
+        action=$(classify_tree "$SRC_SKILLS/$name" "$dest" "$record")
+      else
+        # Not in the repo yet: it is a local edit unless it matches the record.
+        cur=$(tree_hash "$dest")
+        recorded=$(cat "$record" 2>/dev/null || true)
+        if [ -n "$recorded" ] && [ "$cur" = "$recorded" ]; then action=current; else action=local-edit; fi
+      fi
+      if [ "$action" = local-edit ]; then
+        seen["$(tree_hash "$dest")"]+="$dest "
+      fi
+    done
+    if [ "${#seen[@]}" -eq 0 ]; then
+      continue
+    elif [ "${#seen[@]}" -eq 1 ]; then
+      for hash in "${!seen[@]}"; do first="${seen[$hash]%% *}"; done
+      mkdir -p "$SRC_SKILLS/$name"
+      [ -d "$SRC_SKILLS/$name" ] && backup "$SRC_SKILLS/$name"
+      rm -rf "$SRC_SKILLS/$name"
+      mkdir -p "$SRC_SKILLS/$name"
+      cp -a "$first/." "$SRC_SKILLS/$name/"
+      echo "skill:      captured $name <- $first"
+    else
+      echo "skill:      $name: targets disagree; resolve by hand" >&2
+      for h in "${!seen[@]}"; do echo "  ${seen[$h]% }" >&2; done
+      rc=1
+    fi
+  done
+
+  if [ "$rc" = 0 ]; then
+    echo "done. Review: git -C $REPO diff"
+  fi
+  return "$rc"
+}
+
+case "$MODE" in
+  sync) do_sync ;;
+  check) do_sync ;;
+  capture) do_capture ;;
+esac

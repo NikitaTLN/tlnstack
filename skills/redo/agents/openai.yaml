@@ -1,0 +1,4 @@
+interface:
+  display_name: "Redo work"
+  short_description: "Redo, refactor, or redesign a PR or the current work"
+  default_prompt: "Use $redo on this PR: I don't like how it was done. Keep the goal, redo the implementation, and update the same PR."
