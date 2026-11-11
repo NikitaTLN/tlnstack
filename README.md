@@ -63,6 +63,7 @@ Do not edit an installed copy directly.
 | [`docs/git.md`](docs/git.md) | Branches, worktrees, PRs, releases. |
 | [`docs/credentials.md`](docs/credentials.md) | The secret-store rule and the sudo case. |
 | [`docs/machines.md`](docs/machines.md) | Machines and paths. |
+| [`docs/t3code-fork.md`](docs/t3code-fork.md) | Personal T3 Code fork, nightly updates, and worktrees. |
 | [`docs/skills.md`](docs/skills.md) | Every skill and where it comes from. |
 | [`docs/t3-code.md`](docs/t3-code.md) | The T3 Code features used by default. |
 | [`docs/new-machine.md`](docs/new-machine.md) | Setting up a fresh machine. |

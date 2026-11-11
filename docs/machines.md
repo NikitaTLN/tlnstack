@@ -32,6 +32,8 @@ Linux (`alarm`):
 | tlnstack (this repo) | `~/Projects/tlnstack` |
 | T3 Code data | `~/.t3/userdata` |
 | Projects | `~/Projects` |
+| T3 Code personal fork | `~/Projects/t3code` (`personal` branch, published nightlies) |
+| T3 Code task worktrees | `~/Projects/t3code-worktrees/<branch>` |
 
 Windows (`w1dget`):
 
