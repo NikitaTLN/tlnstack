@@ -126,6 +126,7 @@ Details in `docs/credentials.md`.
 
 ## Skills
 
-Personal skills live in this repo and install with `tlnstack sync`. Third-party
+Personal skills live in this repo and install with `tlnstack` (linked on Linux,
+copied on Windows). Third-party
 skills come from `t3dotgg/tstack` and the Matt Pocock library. Inventory and
 provenance: `docs/skills.md`.

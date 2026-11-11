@@ -78,10 +78,10 @@ A target that already has local edits is left alone and reported; re-run with
 `--force` to overwrite it. Backups go to
 `~/.local/state/tlnstack-sync/backups/`.
 
-On the first run, an existing file that tlnstack has never managed is taken over
-(`adopt`) with a backup. After that, a hand edit is a `local-edit` and is
-skipped. `tlnstack --capture` copies a hand edit back into the repo so it can be
-committed.
+On Linux, `tlnstack` links each target to this repo (one source of truth); `git
+pull` is then enough to update it. On Windows it copies. Pass `--link` or
+`--copy` to force either mode. `--capture` is only useful in copy mode; on a
+linked machine, edits land in the repo directly.
 
 ## 4. Hub configuration
 
@@ -143,5 +143,6 @@ Or, in an agent, say **"update tlnstack"** or **"update tstack"**; the
 ## Changing the shared setup
 
 Edit `agents/AGENTS.md` or a skill **in this repo**, never an installed copy.
-Then `tlnstack sync`, commit, push. Other machines pick it up with `git pull`
-plus `tlnstack sync`. See the repo `AGENTS.md`.
+On Linux the installed files are symlinks, so the change is live; commit and
+push, and other Linux machines pick it up with `git pull`. On Windows, run
+`tlnstack sync` after the change. See the repo `AGENTS.md`.

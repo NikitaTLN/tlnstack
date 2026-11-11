@@ -86,7 +86,8 @@ Run `npm ci` in a new worktree; dependencies and build output are per worktree.
 ## This repo (`tlnstack`)
 
 The one exception: `tlnstack` is a personal config repo, like dotfiles. It
-tracks `main` directly. Edit, `tlnstack sync`, commit, push.
+tracks `main` directly. Edit; on Linux the installed files are symlinks, so the
+change is live, but run `tlnstack sync` to record state, then commit and push.
 
 ## Report
 

@@ -37,8 +37,11 @@ tlnstack --capture   # pull a local edit back into this repo
 tstack-sync          # update Theo's skills from upstream
 ```
 
-To change the shared setup: edit `agents/AGENTS.md` or a skill **in this repo**,
-run `tlnstack sync`, commit, and push. Do not edit an installed copy directly.
+On Linux, `tlnstack` links each harness file and skill to this repo, so the
+shared setup is live: edit `agents/AGENTS.md` or a skill **in this repo**,
+commit, and push. Other Linux machines pick it up with `git pull` (no sync
+needed). On Windows, copies are used, so run `tlnstack sync` after a change.
+Do not edit an installed copy directly.
 
 ## The stack
 

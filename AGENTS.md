@@ -39,7 +39,9 @@ unchanged, to every harness:
 ## The loop for changing the setup
 
 1. Edit `agents/AGENTS.md` or a skill here. Never edit an installed copy.
-2. `./scripts/tlnstack --check` then `./scripts/tlnstack` to install it here.
+2. `./scripts/tlnstack --check` then `./scripts/tlnstack` to install it here. On
+   Linux the installed files are symlinks, so the edit is live; the sync just
+   records it.
 3. `./scripts/tstack-sync.sh --check` if a third-party skill changed.
 4. Update the matching doc under `docs/` if behaviour changed.
 5. Commit on `main` with a conventional message and push.

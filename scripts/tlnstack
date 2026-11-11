@@ -2,14 +2,18 @@
 # tlnstack - install this repo's agent instructions and personal skills on a
 # machine, and keep them in step with the repo.
 #
-# Usage: tlnstack [sync|check|capture] [--force] [--repo DIR]
+# Usage: tlnstack [sync|check|capture] [--link|--copy] [--force] [--repo DIR]
 #
-#   sync (default)  copy the repo's files into every target, backing up what is
-#                   already there. A target with local edits is skipped.
+#   sync (default)  install the repo's files into every target.
 #   --check         show what sync would do; write nothing.
 #   --capture       copy an installed file that was edited by hand back into the
 #                   repo, so it can be committed. Refuses when targets disagree.
+#   --link          symlink every target to the repo (default on Linux). One
+#                   source of truth: `git pull` updates every harness.
+#   --copy          copy the content instead (default on Windows, where symlinks
+#                   need Developer Mode).
 #   --force         overwrite a target that has local edits.
+#   --repo DIR      use DIR as the repo root (default: this script's repo).
 #
 # Targets
 #   instructions: ~/.claude/CLAUDE.md, ~/.claude-hub/CLAUDE.md,
@@ -18,12 +22,13 @@
 #   skills:       ~/.claude/skills, ~/.claude-hub/skills,
 #                 ~/.codex/skills, ~/.codex-hub/skills
 #
-# A skill is only overwritten when the installed copy still matches what the
-# last sync installed. Hand edits are reported and left alone unless --force.
+# In copy mode a target is only overwritten when the installed copy still
+# matches what the last sync installed. Hand edits are reported and left alone
+# unless --force.
 #
 # Environment overrides: TLNSTACK_REPO, TLNSTACK_STATE, TLNSTACK_BIN,
-# TLNSTACK_CLAUDE_DIR, TLNSTACK_CLAUDE_HUB_DIR, TLNSTACK_CODEX_DIR,
-# TLNSTACK_CODEX_HUB_DIR, TLNSTACK_OPENCODE_DIR.
+# TLNSTACK_INSTALL (link|copy), TLNSTACK_CLAUDE_DIR, TLNSTACK_CLAUDE_HUB_DIR,
+# TLNSTACK_CODEX_DIR, TLNSTACK_CODEX_HUB_DIR, TLNSTACK_OPENCODE_DIR.
 set -euo pipefail
 
 self=$(readlink -f "${BASH_SOURCE[0]}")
@@ -52,6 +57,14 @@ SKILL_TARGETS=(
   "$CODEX_HUB_DIR/skills"
 )
 
+# Symlinks work on Linux; on Windows they need Developer Mode, so default to a
+# copy there.
+default_install=link
+case "$(uname -s 2>/dev/null || echo unknown)" in
+  MINGW*|MSYS*|CYGWIN*|Windows_NT) default_install=copy ;;
+esac
+INSTALL="${TLNSTACK_INSTALL:-$default_install}"
+
 MODE=sync
 FORCE=0
 
@@ -59,13 +72,14 @@ usage() {
   cat <<'EOF'
 tlnstack - install this repo's agent instructions and personal skills.
 
-Usage: tlnstack [sync|check|capture] [--force] [--repo DIR]
+Usage: tlnstack [sync|check|capture] [--link|--copy] [--force] [--repo DIR]
 
-  sync (default)  copy the repo's files into every target, backing up what is
-                  already there. A target with local edits is skipped.
+  sync (default)  install the repo's files into every target.
   --check         show what sync would do; write nothing.
   --capture       copy an installed file that was edited by hand back into the
                   repo, so it can be committed. Refuses when targets disagree.
+  --link          symlink every target to the repo (default on Linux).
+  --copy          copy the content instead (default on Windows).
   --force         overwrite a target that has local edits.
   --repo DIR      use DIR as the repo root (default: this script's repo).
 
@@ -83,6 +97,8 @@ while [ $# -gt 0 ]; do
     sync) MODE=sync ;;
     check|--check) MODE=check ;;
     capture|--capture) MODE=capture ;;
+    --link) INSTALL=link ;;
+    --copy) INSTALL=copy ;;
     --force) FORCE=1 ;;
     --repo) shift; REPO="${1:?--repo needs a directory}" ;;
     -h|--help) usage; exit 0 ;;
@@ -90,6 +106,11 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
+
+case "$INSTALL" in
+  link|copy) ;;
+  *) echo "tlnstack: TLNSTACK_INSTALL must be link or copy" >&2; exit 2 ;;
+esac
 
 SRC_INSTRUCTIONS="$REPO/agents/AGENTS.md"
 SRC_SKILLS="$REPO/skills"
@@ -102,8 +123,11 @@ fi
 file_hash() { sha256sum "$1" | cut -d' ' -f1; }
 tree_hash() { (cd "$1" && find . -type f -print0 | sort -z | xargs -0 -r sha256sum | sha256sum) | cut -d' ' -f1; }
 slug() { printf '%s' "$1" | sha256sum | cut -c1-12; }
-
 record_path() { printf '%s/%s' "$STATE" "$1"; }
+
+hash_of() {
+  if [ "$1" = tree ]; then tree_hash "$2"; else file_hash "$2"; fi
+}
 
 backup() {
   local path="$1"
@@ -113,75 +137,90 @@ backup() {
   cp -a "$path" "$BACKUPS/$(basename "$path").$stamp.$(slug "$path")"
 }
 
-# Classify one target against the repo source and the last install record.
-# Echoes one of: install current update adopt local-edit.
-#   adopt: the target exists but has no record, so tlnstack has never managed
-#          it. First run takes it over (with a backup).
-classify_file() {
-  local src="$1" dest="$2" record="$3"
-  local new; new=$(file_hash "$src")
-  if [ ! -e "$dest" ]; then
-    echo install; return
+# Classify one target. Echoes one of:
+#   install    missing, will be created
+#   current    already correct (a link to the source, or identical content)
+#   update     content matches the last install, the repo moved on
+#   convert    a copy that matches the source or the record; link it
+#   relink     a link to the wrong place
+#   adopt      exists but tlnstack never managed it; take it over
+#   local-edit changed by hand; left alone unless --force
+classify() {
+  local kind="$1" src="$2" dest="$3" record="$4"
+  local srcreal
+  srcreal=$(readlink -f "$src")
+
+  if [ "$INSTALL" = link ] && [ -L "$dest" ]; then
+    local tgt
+    tgt=$(readlink -f "$dest" 2>/dev/null || true)
+    if [ "$tgt" = "$srcreal" ]; then echo current; else echo relink; fi
+    return
   fi
-  local cur recorded
-  cur=$(file_hash "$dest")
+
+  # In copy mode a symlink is not a real copy: convert it.
+  if [ "$INSTALL" = copy ] && [ -L "$dest" ]; then
+    echo convert
+    return
+  fi
+
+  if [ ! -e "$dest" ]; then echo install; return; fi
+
+  local new cur recorded
+  new=$(hash_of "$kind" "$src")
+  cur=$(hash_of "$kind" "$dest")
   recorded=$(cat "$record" 2>/dev/null || true)
-  if [ "$cur" = "$new" ]; then echo current
-  elif [ -z "$recorded" ]; then echo adopt
-  elif [ "$cur" = "$recorded" ]; then echo update
-  else echo local-edit
+
+  if [ "$cur" = "$new" ]; then
+    if [ "$INSTALL" = link ]; then echo convert; else echo current; fi
+  elif [ -z "$recorded" ]; then
+    echo adopt
+  elif [ "$cur" = "$recorded" ]; then
+    if [ "$INSTALL" = link ]; then echo convert; else echo update; fi
+  else
+    echo local-edit
   fi
 }
 
-classify_tree() {
-  local src="$1" dest="$2" record="$3"
-  local new; new=$(tree_hash "$src")
-  if [ ! -e "$dest" ]; then
-    echo install; return
-  fi
-  local cur recorded
-  cur=$(tree_hash "$dest")
-  recorded=$(cat "$record" 2>/dev/null || true)
-  if [ "$cur" = "$new" ]; then echo current
-  elif [ -z "$recorded" ]; then echo adopt
-  elif [ "$cur" = "$recorded" ]; then echo update
-  else echo local-edit
+write_record() {
+  local kind="$1" src="$2" record="$3"
+  mkdir -p "$STATE"
+  if [ "$INSTALL" = link ]; then
+    printf 'link:%s\n' "$(readlink -f "$src")" > "$record"
+  else
+    printf '%s\n' "$(hash_of "$kind" "$src")" > "$record"
   fi
 }
 
-install_file() {
-  local src="$1" dest="$2" record="$3"
-  local new; new=$(file_hash "$src")
-  mkdir -p "$(dirname "$dest")"
-  [ -e "$dest" ] && backup "$dest"
-  cp -f "$src" "$dest"
-  mkdir -p "$STATE"
-  printf '%s\n' "$new" > "$record"
-}
+apply_target() {
+  local kind="$1" src="$2" dest="$3" record="$4"
 
-install_tree() {
-  local src="$1" dest="$2" record="$3"
-  local new; new=$(tree_hash "$src")
-  [ -e "$dest" ] && backup "$dest"
-  rm -rf "$dest"
-  mkdir -p "$dest"
-  cp -a "$src/." "$dest/"
-  mkdir -p "$STATE"
-  printf '%s\n' "$new" > "$record"
-}
+  if [ -L "$dest" ]; then
+    backup "$dest"
+    rm -f "$dest"
+  fi
 
-touch_record() {
-  local src="$1" record="$2" new
-  new=$(file_hash "$src")
-  mkdir -p "$STATE"
-  printf '%s\n' "$new" > "$record"
-}
+  if [ "$INSTALL" = link ]; then
+    local srcreal
+    srcreal=$(readlink -f "$src")
+    if [ -e "$dest" ] || [ -L "$dest" ]; then backup "$dest"; fi
+    rm -rf "$dest"
+    mkdir -p "$(dirname "$dest")"
+    ln -s "$srcreal" "$dest"
+    write_record "$kind" "$src" "$record"
+    return
+  fi
 
-touch_tree_record() {
-  local src="$1" record="$2" new
-  new=$(tree_hash "$src")
-  mkdir -p "$STATE"
-  printf '%s\n' "$new" > "$record"
+  if [ "$kind" = file ]; then
+    mkdir -p "$(dirname "$dest")"
+    [ -e "$dest" ] && backup "$dest"
+    cp -f "$src" "$dest"
+  else
+    [ -e "$dest" ] && backup "$dest"
+    rm -rf "$dest"
+    mkdir -p "$dest"
+    cp -a "$src/." "$dest/"
+  fi
+  write_record "$kind" "$src" "$record"
 }
 
 link_self() {
@@ -201,48 +240,31 @@ do_sync() {
   [ "$MODE" = check ] && check=1
 
   echo "repo: $REPO"
+  echo "mode: $INSTALL"
 
   local dest record action
   for dest in "${INSTRUCTION_TARGETS[@]}"; do
     record=$(record_path "inst-$(slug "$dest")")
-    action=$(classify_file "$SRC_INSTRUCTIONS" "$dest" "$record")
-    if [ "$action" = local-edit ] && [ "$FORCE" = 1 ]; then action=update; fi
-    if [ "$check" = 0 ]; then
-      case "$action" in
-        install|update|adopt) install_file "$SRC_INSTRUCTIONS" "$dest" "$record" ;;
-        current) touch_record "$SRC_INSTRUCTIONS" "$record" ;;
-        local-edit) skipped=$((skipped+1)) ;;
-      esac
-    else
-      if [ "$action" = local-edit ]; then skipped=$((skipped+1)); fi
-    fi
-    case "$action" in install|update|adopt) changed=$((changed+1)) ;; esac
+    action=$(classify file "$SRC_INSTRUCTIONS" "$dest" "$record")
+    if [ "$action" = local-edit ] && [ "$FORCE" = 1 ]; then action=force; fi
+    handle "$action" file "$SRC_INSTRUCTIONS" "$dest" "$record" "$check"
     printf '%-10s %s\n' "$action" "$dest"
   done
 
-  local src name target tree
+  local src name target
   for src in "$SRC_SKILLS"/*/; do
     [ -d "$src" ] || continue
     name=$(basename "$src")
     for target in "${SKILL_TARGETS[@]}"; do
       if [ ! -d "$target" ]; then
-        printf '%-10s %s (%s missing)\n' skip "$name" "$target"
+        printf '%-10s %-16s %s (folder missing)\n' skip "$name" "$target"
         continue
       fi
       dest="$target/$name"
       record=$(record_path "skill-$(slug "$dest")")
-      action=$(classify_tree "$src" "$dest" "$record")
-      if [ "$action" = local-edit ] && [ "$FORCE" = 1 ]; then action=update; fi
-      if [ "$check" = 0 ]; then
-        case "$action" in
-          install|update|adopt) install_tree "$src" "$dest" "$record" ;;
-          current) touch_tree_record "$src" "$record" ;;
-          local-edit) skipped=$((skipped+1)) ;;
-        esac
-      else
-        if [ "$action" = local-edit ]; then skipped=$((skipped+1)); fi
-      fi
-      case "$action" in install|update|adopt) changed=$((changed+1)) ;; esac
+      action=$(classify tree "$src" "$dest" "$record")
+      if [ "$action" = local-edit ] && [ "$FORCE" = 1 ]; then action=force; fi
+      handle "$action" tree "$src" "$dest" "$record" "$check"
       printf '%-10s %-16s %s\n' "$action" "$name" "$dest"
     done
   done
@@ -258,17 +280,34 @@ do_sync() {
   fi
 }
 
+# Apply one classified action, or just count it when checking.
+handle() {
+  local action="$1" kind="$2" src="$3" dest="$4" record="$5" check="$6"
+
+  case "$action" in
+    install|update|convert|relink|adopt|force)
+      changed=$((changed+1))
+      if [ "$check" = 0 ]; then apply_target "$kind" "$src" "$dest" "$record"; fi
+      ;;
+    current)
+      if [ "$check" = 0 ]; then write_record "$kind" "$src" "$record"; fi
+      ;;
+    local-edit)
+      skipped=$((skipped+1))
+      ;;
+  esac
+}
+
 do_capture() {
   echo "repo: $REPO"
 
-  # Instructions: collect targets that were edited by hand (differ from both the
-  # repo and the last install record).
+  # Instructions: targets edited by hand (differ from the repo and the record).
   local -A seen=()
   local dest record action cur
   for dest in "${INSTRUCTION_TARGETS[@]}"; do
     [ -e "$dest" ] || continue
     record=$(record_path "inst-$(slug "$dest")")
-    action=$(classify_file "$SRC_INSTRUCTIONS" "$dest" "$record")
+    action=$(classify file "$SRC_INSTRUCTIONS" "$dest" "$record")
     if [ "$action" = local-edit ]; then
       cur=$(file_hash "$dest")
       seen["$cur"]+="$dest "
@@ -291,7 +330,7 @@ do_capture() {
   fi
 
   # Skills: same idea, per skill, including skills that exist only on a machine.
-  local src name target tree hash first
+  local src name target
   declare -A names=()
   for src in "$SRC_SKILLS"/*/; do
     [ -d "$src" ] || continue
@@ -313,9 +352,8 @@ do_capture() {
       [ -d "$dest" ] || continue
       record=$(record_path "skill-$(slug "$dest")")
       if [ -d "$SRC_SKILLS/$name" ]; then
-        action=$(classify_tree "$SRC_SKILLS/$name" "$dest" "$record")
+        action=$(classify tree "$SRC_SKILLS/$name" "$dest" "$record")
       else
-        # Not in the repo yet: it is a local edit unless it matches the record.
         cur=$(tree_hash "$dest")
         recorded=$(cat "$record" 2>/dev/null || true)
         if [ -n "$recorded" ] && [ "$cur" = "$recorded" ]; then action=current; else action=local-edit; fi
@@ -327,8 +365,8 @@ do_capture() {
     if [ "${#seen[@]}" -eq 0 ]; then
       continue
     elif [ "${#seen[@]}" -eq 1 ]; then
+      local hash first=""
       for hash in "${!seen[@]}"; do first="${seen[$hash]%% *}"; done
-      mkdir -p "$SRC_SKILLS/$name"
       [ -d "$SRC_SKILLS/$name" ] && backup "$SRC_SKILLS/$name"
       rm -rf "$SRC_SKILLS/$name"
       mkdir -p "$SRC_SKILLS/$name"

@@ -4,7 +4,8 @@ Three sources, all installed into the same skill folders.
 
 ## Personal (this repo)
 
-Installed by `tlnstack sync` into every skill folder.
+Installed by `tlnstack` into every skill folder (linked on Linux, copied on
+Windows).
 
 | Skill | Say | What it does |
 | --- | --- | --- |
@@ -48,9 +49,15 @@ tlnstack.
 
 ## Updating
 
+On Linux, `tlnstack` links each harness file and skill to this repo, so an edit
+in the repo is live: commit and push, and other Linux machines pick it up with
+`git pull`. `tlnstack sync` is still the installer for a fresh machine or for
+forcing a refresh.
+
 ```bash
-tlnstack sync        # this repo -> every machine's files and skills
 tlnstack --check     # show what would change
+tlnstack             # install / refresh (link on Linux, copy on Windows)
+tlnstack --copy      # force copies instead of links
 tstack-sync.sh --check   # check the third-party tstack skills
 ```
 

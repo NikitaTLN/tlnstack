@@ -27,10 +27,12 @@ hub copies, `~/.config/opencode/AGENTS.md`) and the personal skills in step with
    ```
 
 3. Show the user the result as a short table: target, action.
-   - `install`: not present yet, will be copied.
+   - `install`: not present yet, will be linked (Linux) or copied (Windows).
    - `adopt`: present but never managed by tlnstack. Taken over on the first
      run, with a backup.
-   - `update`: the repo changed and the installed copy was untouched.
+   - `update`: the repo changed and the installed copy was untouched (copy mode).
+   - `convert`: a copy is being replaced by a link, or vice versa.
+   - `relink`: a link pointed at the wrong place.
    - `current`: already matches the repo.
    - `local-edit`: the installed copy was changed by hand. It is never
      overwritten unless the user asks for `--force`.
@@ -42,15 +44,18 @@ hub copies, `~/.config/opencode/AGENTS.md`) and the personal skills in step with
 
 If the user changed an installed file by hand and wants to keep it, run
 `tlnstack --capture`. It copies the installed version back into the repo
-(`agents/AGENTS.md` or `skills/<name>/`), refusing when targets disagree. Then
-review `git diff`, commit on `main`, and push.
+(`agents/AGENTS.md` or `skills/<name>/`), refusing when targets disagree. On a
+linked machine there is nothing to capture: edits land in the repo directly.
+Then review `git diff`, commit on `main`, and push.
 
 ## Notes
 
 - The repo is `~/Projects/tlnstack`. It tracks `main` directly; there are no
   task branches.
+- On Linux, `tlnstack` links each target to the repo, so an edit in the repo
+  is live and other machines pick it up with `git pull` alone. On Windows,
+  copies are used, so run `tlnstack sync` after a change.
 - To change the shared setup for every machine, edit the repo, not an installed
-  copy, then commit and push. Other machines pick it up with `git pull` plus
-  `tlnstack sync`.
+  copy, then commit and push.
 - Third-party skills are separate: say **"update tstack"** for Theo's skills.
   The Matt Pocock library is cloned once by `scripts/bootstrap.sh`.

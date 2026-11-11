@@ -12,9 +12,10 @@
   first for its config.
 - OpenCode runs natively; its global instructions live in
   `~/.config/opencode/AGENTS.md`.
-- This file is installed by **tlnstack** (`~/Projects/tlnstack`). Edit it in the
-  repo, then run `tlnstack sync`, and commit and push the change. Do not edit an
-  installed copy directly.
+- This file is installed by **tlnstack** (`~/Projects/tlnstack`). On Linux it is
+  symlinked to the repo, so an edit in the repo is live; run `tlnstack sync`
+  anyway to record state, then commit and push. On Windows it is a copy, so
+  `tlnstack sync` is required. Do not edit an installed copy directly.
 
 # Working style
 
