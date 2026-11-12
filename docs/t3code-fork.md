@@ -1,6 +1,6 @@
 # Personal T3 Code fork
 
-Repository: https://github.com/NikitaTLN/t3code
+Repository: https://github.com/NikitaTLN/TLN2Code
 
 The local checkout is `~/Projects/t3code`. `personal` is the integration/default
 branch and follows **published nightly releases** of `pingdotgg/t3code`.
