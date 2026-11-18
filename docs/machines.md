@@ -7,7 +7,7 @@ Tailnet: `tailadf79f.ts.net` (Tailscale). MagicDNS names end in
 | --- | --- | --- | --- | --- |
 | `alarm` | Arch Linux ARM (aarch64) | `w1dget` | Main laptop. T3 Code, Claude Code, Codex, OpenCode. | `alarm.tailadf79f.ts.net` |
 | `w1dget` | Windows | `nikit` | Windows PC for `onlytuz` native builds and iRacing tests. | `w1dget.tailadf79f.ts.net` |
-| `raspberrypi` | Linux | — | CLI proxy hub. Serves Claude Code and Codex on port `8317` (https). | `raspberrypi.tailadf79f.ts.net` |
+| `raspberrypi` | Linux (Ubuntu, aarch64) | `pi` | CLI proxy hub. Serves Claude Code and Codex on port `8317` (https). Runs upstream T3 Code (nightly) as a service, Claude Code, Codex, tlnstack, tstack. | `raspberrypi.tailadf79f.ts.net` |
 | `omarchy-1` | Linux | — | Secondary Linux box. | `omarchy-1.tailadf79f.ts.net` |
 | `iphone-15-pro` | iOS | — | T3 Code mobile client. | — |
 

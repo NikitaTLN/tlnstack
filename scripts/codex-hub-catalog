@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+"""Rebuild ~/.codex-hub/model-catalog.json so Codex Hub lists the newest models.
+
+Codex Hub reads a fixed model catalog (`model_catalog_json` in
+~/.codex-hub/config.toml) instead of asking OpenAI, so new models such as
+GPT-6.2 stay hidden until the catalog is rebuilt. This copies the model list
+that native Codex last fetched (~/.codex/models_cache.json), keeps only the
+models the CLI proxy actually serves, and drops `web_search_provider`.
+
+Usage: codex-hub-catalog [--check]
+  --check   show what would change; write nothing.
+
+Refresh the native list first by running any `codex` command with the native
+config (for example `codex debug models > /dev/null`). The old catalog is kept
+as model-catalog.json.bak-<date>. The proxy bearer token is read from
+~/.codex-hub/config.toml and never printed.
+"""
+import datetime
+import json
+import os
+import shutil
+import sys
+import tomllib
+import urllib.request
+
+HOME = os.path.expanduser("~")
+NATIVE = os.path.join(HOME, ".codex", "models_cache.json")
+HUB_CONFIG = os.path.join(HOME, ".codex-hub", "config.toml")
+CATALOG = os.path.join(HOME, ".codex-hub", "model-catalog.json")
+
+
+def proxy_models():
+    with open(HUB_CONFIG, "rb") as stream:
+        provider = tomllib.load(stream)["model_providers"]["cliproxy"]
+    request = urllib.request.Request(
+        provider["base_url"].rstrip("/") + "/models",
+        headers={"Authorization": "Bearer " + provider["experimental_bearer_token"]},
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        return {model["id"] for model in json.load(response).get("data", [])}
+
+
+def main():
+    check = sys.argv[1:] == ["--check"]
+    if sys.argv[1:] not in ([], ["--check"]):
+        sys.exit(__doc__)
+    native = json.load(open(NATIVE))["models"]
+    served = proxy_models()
+    models = []
+    for model in native:
+        if model["slug"] not in served:
+            continue
+        model = dict(model)
+        model.pop("web_search_provider", None)
+        models.append(model)
+    old = []
+    if os.path.exists(CATALOG):
+        old = [m["slug"] for m in json.load(open(CATALOG))["models"]]
+    new = [m["slug"] for m in models]
+    print("before:", ", ".join(old) or "(none)")
+    print("after: ", ", ".join(new))
+    skipped = [m["slug"] for m in native if m["slug"] not in served]
+    if skipped:
+        print("not served by the proxy, left out:", ", ".join(skipped))
+    if check or old == new:
+        print("nothing written" if check else "already current")
+        return
+    if os.path.exists(CATALOG):
+        stamp = datetime.date.today().strftime("%Y%m%d")
+        shutil.copy2(CATALOG, f"{CATALOG}.bak-{stamp}")
+    with open(CATALOG + ".tmp", "w") as stream:
+        json.dump({"models": models}, stream, indent=2)
+    os.replace(CATALOG + ".tmp", CATALOG)
+    print("wrote", CATALOG)
+
+
+if __name__ == "__main__":
+    main()

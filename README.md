@@ -16,6 +16,7 @@ It is a dotfiles-style repo. It tracks `main` directly, on purpose.
 | `scripts/tlnstack` | Installs and syncs the instructions and skills. |
 | `scripts/tstack-sync.sh` | Keeps the third-party `t3dotgg/tstack` skills up to date. |
 | `scripts/bootstrap.sh` | Sets up a fresh machine in one go. |
+| `scripts/codex-hub-catalog` | Rebuilds the Codex Hub model catalog so new models appear. |
 | `AGENTS.md` / `CLAUDE.md` | Instructions for an agent working **on this repo**. |
 
 ## Quick start on a new machine
@@ -67,6 +68,7 @@ Do not edit an installed copy directly.
 | [`docs/skills.md`](docs/skills.md) | Every skill and where it comes from. |
 | [`docs/t3-code.md`](docs/t3-code.md) | The T3 Code features used by default. |
 | [`docs/new-machine.md`](docs/new-machine.md) | Setting up a fresh machine. |
+| [`docs/updating.md`](docs/updating.md) | Updating every tool on `alarm` and the Pi, with the known traps. |
 
 ## License
 

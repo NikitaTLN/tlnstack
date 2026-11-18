@@ -24,6 +24,12 @@ node scripts/personal-fork.mjs nightly
 node scripts/personal-fork.mjs sync
 ```
 
+As of 2026-11-18 `scripts/personal-fork.mjs` and the runbook exist only on the
+unmerged `chore/fork-bootstrap` branch (PR #1), not on `personal`. Until it is
+merged, update by hand: see the TLN2Code section of
+[`updating.md`](updating.md), which also has the arm64 AppImage build and
+install steps.
+
 Nightly sync prepares an update worktree for review; it does not deploy,
 publish, or overwrite local changes. Stable and preview releases are excluded.
 The initial fork uses manual artifact installs. Provider credentials, local
