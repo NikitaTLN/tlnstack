@@ -118,7 +118,7 @@ so council is built to spend little.
 <!-- mattpocock-skills-library -->
 ## Matt Pocock skill library
 
-A library of 27 engineering skills lives at `/home/w1dget/.local/share/mattpocock-skills/skills/`
+A library of 27 engineering skills lives at `~/.local/share/mattpocock-skills/skills/`
 (`engineering/` and `productivity/`). They are not listed as picker
 entries, so use them on demand: when a task matches one, read its
 `SKILL.md` and follow it.
@@ -128,6 +128,6 @@ glossary or ADR work, codebase/interface design, grilling or stress-testing a
 plan, research, throwaway prototypes, writing a PR body, specs and tickets,
 triage, handoff, teaching, and writing docs for agents.
 
-`ls /home/w1dget/.local/share/mattpocock-skills/skills/*/` for the full list.
+`ls ~/.local/share/mattpocock-skills/skills/*/` for the full list.
 `engineering/ask-matt/SKILL.md` routes by situation.
 <!-- /mattpocock-skills-library -->
