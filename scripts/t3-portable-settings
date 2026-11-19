@@ -5,13 +5,14 @@ Usage: t3-portable-settings OUT_DIR [--from USERDATA]
 
 USERDATA defaults to ~/.t3/userdata. OUT_DIR gets:
 
-  client-settings.json  UI, fonts, speech words, browser and diff prefs (as is)
+  client-settings.json  UI, fonts, speech words, browser and diff prefs, without
+                        machine-specific microphones and project IDs
   keybindings.json      key bindings (as is; they use `mod`, so they work on
                         macOS and Linux)
   themes/               custom themes (as is)
   settings.json         server settings, made portable:
-                        - hub and API provider instances dropped, native Claude
-                          (`claudeAgent`) and Codex (`codex`) enabled
+                        - native Claude (`claudeAgent`) and Codex (`codex`)
+                          enabled, native OpenCode preference kept
                         - model selections and favorites moved to the native
                           instances
                         - secrets and machine-bound entries dropped: cloud
@@ -34,30 +35,37 @@ DROP_KEYS = (
     "projectScriptOverrides",
     "projectSettingsOverrides",
 )
+CLIENT_DROP_KEYS = ("sidebarProjectGroupingOverrides", "voiceMicrophone", "voiceMicrophones")
 
 
 def portable_settings(settings: dict) -> dict:
     out = {k: v for k, v in settings.items() if k not in DROP_KEYS}
 
     instances = {}
-    for key, inst in (settings.get("providerInstances") or {}).items():
-        if key in NATIVE:
-            continue
-        instances[key] = dict(inst)
+    opencode = (settings.get("providerInstances") or {}).get("opencode", {})
+    if opencode.get("driver") == "opencode":
+        instances["opencode"] = {
+            key: opencode[key] for key in ("driver", "enabled", "displayName") if key in opencode
+        }
     for key, driver in (("claudeAgent", "claudeAgent"), ("codex", "codex")):
         instances[key] = {"driver": driver, "enabled": True}
     out["providerInstances"] = instances
 
     for key in ("defaultModelSelection", "textGenerationModelSelection"):
         sel = settings.get(key)
-        if isinstance(sel, dict) and sel.get("instanceId") in NATIVE:
-            out[key] = {**sel, "instanceId": NATIVE[sel["instanceId"]]}
+        if isinstance(sel, dict):
+            instance = sel.get("instanceId")
+            instance = NATIVE.get(instance, instance)
+            if instance in instances:
+                out[key] = {**sel, "instanceId": instance}
+            else:
+                out.pop(key, None)
 
     favorites, seen = [], set()
     for fav in settings.get("favorites") or []:
         fav = {**fav, "provider": NATIVE.get(fav.get("provider"), fav.get("provider"))}
         ident = (fav.get("provider"), fav.get("model"))
-        if ident not in seen:
+        if ident[0] in instances and ident not in seen:
             seen.add(ident)
             favorites.append(fav)
     out["favorites"] = favorites
@@ -77,10 +85,15 @@ def main(argv: list[str]) -> int:
         return 2
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    for name in ("client-settings.json", "keybindings.json"):
-        if (src / name).is_file():
-            shutil.copy2(src / name, out_dir / name)
-            print(f"copied   {name}")
+    client_settings = src / "client-settings.json"
+    if client_settings.is_file():
+        client = json.loads(client_settings.read_text())
+        client = {k: v for k, v in client.items() if k not in CLIENT_DROP_KEYS}
+        (out_dir / client_settings.name).write_text(json.dumps(client, indent=2) + "\n")
+        print("wrote    client-settings.json")
+    if (src / "keybindings.json").is_file():
+        shutil.copy2(src / "keybindings.json", out_dir / "keybindings.json")
+        print("copied   keybindings.json")
     if (src / "themes").is_dir():
         shutil.copytree(src / "themes", out_dir / "themes", dirs_exist_ok=True)
         print("copied   themes/")

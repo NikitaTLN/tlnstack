@@ -6,7 +6,7 @@
 #   (default)    clone each missing project, fetch the ones already there.
 #   --check      show what would happen; change nothing.
 #   --setup      run each project's setup command (npm ci, vp i, ...) in the
-#                checkout and in every worktree this run creates.
+#                checkout and in each open PR worktree, including existing ones.
 #   --worktrees  create a worktree for every OPEN pull request whose branch is
 #                in the repo, at <repo-parent>/<repo-name>-worktrees/<branch>.
 #                Merged and closed branches are left alone.
@@ -44,9 +44,12 @@ done
 command -v gh >/dev/null || { echo "restore-projects: gh is required" >&2; exit 1; }
 
 say() { printf '%-10s %s\n' "$1" "$2"; }
+fail() {
+  say FAILED "$1" >&2
+  failures=$((failures+1))
+}
 # git with gh as the HTTPS credential helper, whatever the global config says.
 ghgit() { git -c credential.helper= -c 'credential.helper=!gh auth git-credential' "$@" </dev/null; }
-run() { if [ "$CHECK" = 1 ]; then return 0; fi; "$@"; }
 
 run_setup() {
   local dir="$1" cmd="$2"
@@ -54,8 +57,7 @@ run_setup() {
   say setup "$dir"
   [ "$CHECK" = 1 ] && return 0
   if ! (cd "$dir" && bash -c "$cmd" </dev/null); then
-    say FAILED "setup in $dir (continuing)"
-    failures=$((failures+1))
+    fail "setup in $dir (continuing)"
   fi
 }
 
@@ -73,7 +75,10 @@ while IFS=$'\t' read -r -u 3 path repo base clone_args setup notes || [ -n "${pa
 
   if [ -e "$path/.git" ]; then
     say fetch "$path"
-    run ghgit -C "$path" fetch --quiet --prune origin || say FAILED "fetch $path"
+    if [ "$CHECK" = 0 ] && ! ghgit -C "$path" fetch --quiet --prune origin; then
+      fail "fetch $path (continuing)"
+      continue
+    fi
   elif [ -e "$path" ] && [ -n "$(ls -A "$path" 2>/dev/null)" ]; then
     say SKIP "$path exists but is not a git checkout; move it aside first"
     failures=$((failures+1))
@@ -81,19 +86,17 @@ while IFS=$'\t' read -r -u 3 path repo base clone_args setup notes || [ -n "${pa
   else
     say clone "$repo -> $path"
     if [ "$CHECK" = 0 ]; then
-      mkdir -p "$(dirname "$path")"
       extra=""
       [ "$clone_args" = "-" ] || extra="$clone_args"
+      base_args=()
+      if [ "$base" != "-" ]; then base_args=(--branch "$base"); fi
       # HTTPS like the existing remotes; gh answers the credential prompt, so
       # no SSH host key or key setup is needed on a fresh machine.
       # shellcheck disable=SC2086 # extra is a word list on purpose
-      if ! ghgit clone --quiet $extra "https://github.com/$repo.git" "$path"; then
-        say FAILED "clone $repo (is gh logged in with access to it?)"
-        failures=$((failures+1))
+      if ! mkdir -p "$(dirname "$path")" ||
+         ! ghgit clone --quiet ${base_args[@]+"${base_args[@]}"} $extra "https://github.com/$repo.git" "$path"; then
+        fail "clone $repo (verify GitHub access and base branch $base)"
         continue
-      fi
-      if [ "$base" != "-" ] && [ "$(git -C "$path" branch --show-current)" != "$base" ]; then
-        git -C "$path" switch --quiet "$base"
       fi
     fi
   fi
@@ -102,31 +105,48 @@ while IFS=$'\t' read -r -u 3 path repo base clone_args setup notes || [ -n "${pa
 
   [ "$WORKTREES" = 1 ] || continue
   wt_root="$(dirname "$path")/$name-worktrees"
-  branches=$(gh pr list -R "$repo" --state open --limit 100 \
+  if ! branches=$(gh pr list -R "$repo" --state open --limit 100 \
     --json headRefName,isCrossRepository \
-    -q '.[] | select(.isCrossRepository | not) | .headRefName' 2>/dev/null || true)
+    -q '.[] | select(.isCrossRepository | not) | .headRefName'); then
+    fail "list open PRs for $repo (continuing)"
+    continue
+  fi
   if [ -z "$branches" ]; then
     say worktree "none (no open PRs)"
     continue
   fi
+  existing=""
+  [ -e "$path/.git" ] && existing=$(git -C "$path" worktree list --porcelain)
   while IFS= read -r -u 4 branch; do
     [ -n "$branch" ] || continue
-    # Capture first: `git ... | grep -q` fails under pipefail when grep exits
-    # early and git gets SIGPIPE.
-    existing=""
-    [ -e "$path/.git" ] && existing=$(git -C "$path" worktree list --porcelain)
-    if printf '%s\n' "$existing" | grep -qx "branch refs/heads/$branch"; then
+    current=$(awk -v ref="branch refs/heads/$branch" '
+      /^worktree / { path = substr($0, 10) }
+      $0 == ref { print path }
+    ' <<< "$existing")
+    if [ -n "$current" ]; then
+      if [ ! -e "$current/.git" ]; then
+        fail "registered worktree $branch is missing at $current (continuing)"
+        continue
+      fi
       say current "worktree $branch"
+      if [ "$current" != "$path" ]; then run_setup "$current" "$setup"; fi
       continue
     fi
     wt="$wt_root/$branch"
     say worktree "$branch -> $wt"
     [ "$CHECK" = 1 ] && continue
-    mkdir -p "$(dirname "$wt")"
+    if ! mkdir -p "$(dirname "$wt")"; then
+      fail "create parent directory for $wt (continuing)"
+      continue
+    fi
     if git -C "$path" show-ref --verify --quiet "refs/heads/$branch"; then
-      git -C "$path" worktree add --quiet "$wt" "$branch"
+      worktree_args=("$wt" "$branch")
     else
-      git -C "$path" worktree add --quiet --track -b "$branch" "$wt" "origin/$branch"
+      worktree_args=(--track -b "$branch" "$wt" "origin/$branch")
+    fi
+    if ! git -C "$path" worktree add --quiet "${worktree_args[@]}"; then
+      fail "create worktree $wt (continuing)"
+      continue
     fi
     run_setup "$wt" "$setup"
   done 4<<EOF

@@ -22,8 +22,7 @@ bash 4, and the desktop apps.
 | Claude desktop app | Claude, native sign-in | claude.ai/download (macOS, Windows) |
 | Codex desktop app | Codex, native sign-in | OpenAI's Codex app |
 
-Sign in to Tailscale so the CLI proxy on `raspberrypi` and the other machines
-are reachable.
+Sign in to Tailscale so `raspberrypi` and the other machines are reachable.
 
 ## 1. Clone this repo
 

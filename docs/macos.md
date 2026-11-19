@@ -15,6 +15,26 @@ macOS cannot read the Linux ext4 partition, and Linux cannot write the APFS
 one. Anything that only lives on the Linux disk has to go through GitHub or
 the network. See [Moving data](#moving-data).
 
+## Prompt for the Mac setup agent
+
+Start a coding session in Claude Desktop or Codex on macOS and give it this:
+
+```text
+Set up this Mac from https://github.com/NikitaTLN/tlnstack. Clone it to
+~/Projects/tlnstack if needed, read AGENTS.md, and carry out docs/macos.md
+and docs/projects.md. Restore all eight repos, dependencies, open PR
+worktrees, staged personal files and T3 settings. Build TLN2Code for Apple
+Silicon, add the projects and project scripts, and verify Claude and Codex
+in both directions with native sign-in. The CLI proxy is paused.
+
+The private staging folder is pi@raspberrypi:migration/ over Tailscale SSH.
+Use the restore paths in the guide. Keep staged local Git work available
+for recovery and ask before applying it to an active checkout. Preserve
+existing Mac files and leave the Pi copy in place until I verify the Mac.
+Handle sign-ins, sudo, and macOS dialogs with me when needed, then continue
+with the remaining steps. Keep secrets out of chat and Git.
+```
+
 ## What is already in the cloud
 
 Every project is on GitHub and listed in [`projects.tsv`](../projects.tsv).
@@ -36,17 +56,16 @@ the check below for a fresh list.
 
 | Thing | Path on `alarm` | Size | Action |
 | --- | --- | --- | --- |
-| onlydrafts handoff docs | `~/Projects/onlydrafts-website-handoff` | 3 MB | Push it, or move it into `onlytuz/docs`. |
-| Obsidian vault | `~/ObsidianVault` | 46 MB | Check that Obsidian Sync is really on, or copy it. |
-| Codex desktop chats | `~/Documents/Codex` | 47 MB | Copy if you want the history. |
-| Notes, pictures | `~/newideas.md`, `~/overlayfeatureidea.md`, `~/Pictures`, `~/reports` | small | Copy. |
+| onlydrafts handoff docs | `~/Projects/onlydrafts-website-handoff` | 3 MB | Restore from the Pi snapshot. |
+| Obsidian vault | `~/ObsidianVault` | 46 MB | Restore from the Pi snapshot and review any differences from Obsidian Sync. |
+| Codex working files | `~/Documents/Codex` | 47 MB | Copy the files. Local provider session logs are separate. |
+| Notes, pictures, reports | `~/newideas.md`, `~/overlayfeatureidea.md`, `~/Pictures`, `~/reports` | about 450 MB staged | Restore from the Pi snapshot. |
 | SSH keys and config | `~/.ssh` (GitHub, Pi, hosthatch, Nikitway deploy, OD SFTP) | — | Copy over SSH, or make new keys and authorize them. Never commit. |
 | onlytuz release token | `~/Projects/onlytuz/publish.token` | — | **Secret.** Copy over SSH. Never commit. |
 | T3 Code settings | `~/.t3/userdata` (settings, keybindings, themes) | small | Export with `t3-portable-settings` (see [`projects.md`](projects.md#2-t3-code-data-t3)). |
 | T3 Code threads | `~/.t3/userdata/statev2.sqlite` | 360 MB | Stays on Linux. Threads that must survive a reboot belong on the Pi's T3 server. |
 | mise tool list | `~/.config/mise/config.toml` | — | Copy. |
-| `onlytuz` local-only work | 5 branches with unpushed commits, 1 stash, uncommitted `src/lib/miva.ts` | — | Push the branches you still want, or leave them on Linux. |
-| `OD-Overlay-Website` | staged `site/index.html` on `chore/record-publish-20261105` (no upstream) | — | Commit and push, or drop it. |
+| Local Git work | onlytuz backup and integration branches, onlytuz and TLN2Code stashes, onlytuz and OD-Overlay-Website edits | small | [Recover from the private snapshot](projects.md#4-local-git-work). |
 
 Check for unpushed work in any repo:
 
@@ -63,36 +82,46 @@ done
 
 ## Moving data
 
-The two systems can't share a disk, so stage files on the Pi.
+The two systems can't share a disk. The 2026-11-19 snapshot is on the Pi in
+`~/migration`, accessible only to its `pi` account. It contains the personal
+files, T3 settings, and local Git backups. SSH private keys and the release
+token are still on `alarm`. Use Tailscale SSH for the transfer, then authorize
+a new deployment key or arrange a separate secure transfer if needed.
 
-On Linux (`alarm`), before rebooting:
+To refresh the files and T3 settings on `alarm` before a later switch:
 
 ```bash
-ssh pi 'mkdir -p ~/migration && chmod 700 ~/migration'
-rsync -a ~/Projects/onlydrafts-website-handoff \
+ssh pi 'umask 077; mkdir -p ~/migration && chmod 700 ~/migration'
+rsync -a --exclude=.venv --exclude=__pycache__ --exclude=node_modules --exclude=.git \
+  ~/Projects/onlydrafts-website-handoff \
   ~/ObsidianVault ~/Documents/Codex ~/Pictures ~/reports \
   ~/newideas.md ~/overlayfeatureidea.md ~/.config/mise/config.toml pi:migration/
 ~/Projects/tlnstack/scripts/t3-portable-settings ~/t3-settings && rsync -a ~/t3-settings pi:migration/
-rsync -a ~/.ssh/ pi:migration/ssh/                                # keys + config
-rsync -a ~/Projects/onlytuz/publish.token pi:migration/secrets/  # secret
 ```
 
-On macOS, after Tailscale is up. The Pi runs **Tailscale SSH**, so this works
-before any SSH key or `~/.ssh/config` is on the Mac (use the full
-`pi@raspberrypi`; the `pi` alias comes with the copied config):
+On macOS, after signing in to Tailscale:
 
 ```bash
-rsync -a pi@raspberrypi:migration/ ~/migration/
-# move each item to its place:
-#   ssh/ -> ~/.ssh   config.toml -> ~/.config/mise/   t3-settings/ -> ~/.t3/userdata/
-#   secrets/publish.token -> ~/Projects/onlytuz/  (after restore-projects)
-ssh pi@raspberrypi 'rm -rf ~/migration'   # don't leave keys on the Pi
-chmod 700 ~/.ssh && chmod 600 ~/.ssh/id_*
+mkdir -p -m 700 ~/migration
+rsync -a --ignore-existing pi@raspberrypi:migration/ ~/migration/
+rsync -aicn pi@raspberrypi:migration/ ~/migration/   # review any differences
+
+mkdir -p ~/Projects ~/Documents ~/.config/mise
+rsync -a --ignore-existing ~/migration/onlydrafts-website-handoff ~/Projects/
+rsync -a --ignore-existing ~/migration/Codex ~/Documents/
+rsync -a --ignore-existing ~/migration/{ObsidianVault,Pictures,reports} ~/
+rsync -a --ignore-existing ~/migration/{newideas.md,overlayfeatureidea.md} ~/
+rsync -a --ignore-existing ~/migration/config.toml ~/.config/mise/
 ```
+
+Review any conflicting Mac copies before merging them, especially Obsidian
+files and the mise config. The `t3-settings/` folder is used in step 8. Keep
+the `local-work/` folder as a backup until you decide which changes to resume.
 
 ## Setup checklist
 
-Do these in order. Steps 4 to 6 are the same as [`new-machine.md`](new-machine.md).
+Follow this checklist after starting the setup agent. The Mac's login, Xcode
+and permission dialogs may need your input.
 
 **No CLI proxy on the Mac.** The hub is paused. Skip every `-hub` step: no
 `~/.claude-hub`, no `~/.codex-hub`, no bearer token. Claude and Codex sign in
@@ -101,6 +130,8 @@ natively everywhere on the Mac.
 ### 1. macOS basics
 
 - Update macOS. Sign in with your Apple ID.
+- If `git` prompts for Apple's Command Line Tools when cloning tlnstack, install
+  them and retry the clone.
 - **Xcode** from the App Store, then:
 
   ```bash
@@ -118,22 +149,23 @@ natively everywhere on the Mac.
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+eval "$(/opt/homebrew/bin/brew shellenv)"     # Apple Silicon; also add in ~/.zprofile
 brew install git gh mise bash python jq ripgrep rust
-brew install --cask tailscale
+brew install --cask tailscale-app
 ```
 
 - `bash`: macOS ships bash 3.2; `tlnstack` needs bash 4 or newer.
 - `rust`: the T3 Code fork's macOS build needs it.
-- Activate mise in `~/.zshrc` (`eval "$(mise activate zsh)"`) and add
-  `~/.local/bin` to `PATH`.
-- Copy `~/.config/mise/config.toml` from `alarm` (`claude`, `codex`, `node`,
-  `opencode` at `latest`), then `mise install`.
+- Add `~/.local/bin` and `~/.local/share/mise/shims` to `PATH` in `~/.zprofile`
+  so login shells can find the agent CLIs. Activate mise in `~/.zshrc`
+  (`eval "$(mise activate zsh)"`).
 
 ### 3. Tailscale
 
 Open Tailscale and sign in. Re-authorize `macbook-air-nikita`. Check that
 `ssh pi@raspberrypi true` works (Tailscale SSH: no key needed). Then pull the
-staged files from the Pi ([Moving data](#moving-data)).
+staged files from the Pi ([Moving data](#moving-data)) and run `mise install`
+to install `claude`, `codex`, `node`, and `opencode` from the restored config.
 
 ### 4. GitHub and tlnstack
 
@@ -141,11 +173,13 @@ staged files from the Pi ([Moving data](#moving-data)).
 gh auth login --git-protocol https     # HTTPS, like the existing remotes
 gh auth setup-git
 mkdir -p ~/Projects && cd ~/Projects
-gh repo clone NikitaTLN/tlnstack
+[ -d tlnstack/.git ] || gh repo clone NikitaTLN/tlnstack
 cd tlnstack && ./scripts/bootstrap.sh
 ```
 
 The bootstrap links the instructions and skills (symlinks, same as Linux).
+Restore the [Git preferences](projects.md#git-preferences) that are unset on
+the Mac.
 
 ### 5. Native sign-in for the CLIs
 
@@ -154,8 +188,8 @@ claude        # sign in with Claude Max, then /exit
 codex login   # sign in with ChatGPT Pro
 ```
 
-The desktop apps and the CLIs share `~/.claude` and `~/.codex`, so this is
-one sign-in each. No hub configs on this machine.
+Check that both CLIs are signed in with the native accounts before testing
+the desktop bridge.
 
 ### 6. Desktop apps (native sign-in)
 
@@ -164,9 +198,11 @@ one sign-in each. No hub configs on this machine.
 | Claude | claude.ai/download | Claude Max | `~/.claude/CLAUDE.md`, `~/.claude/skills` |
 | Codex | the Codex app for macOS (OpenAI) | ChatGPT Pro | `~/.codex/AGENTS.md`, `~/.codex/skills` |
 
-tlnstack has already linked the instructions and skills into both. Set
-Claude's default model to Opus in its settings, not Fable, which needs extra
-usage credits.
+Homebrew can install the apps with `brew install --cask claude codex-app`.
+
+tlnstack has linked the instructions and skills into both. Restart any app
+that was open before bootstrap. Check that Claude is on your Max account,
+then select Opus in its settings.
 
 Both apps can call each other through the `ask-codex` and `ask-claude` skills.
 See [`claude-codex.md`](claude-codex.md).
@@ -175,15 +211,15 @@ See [`claude-codex.md`](claude-codex.md).
 
 ```bash
 curl -fsSL https://vite.plus | bash         # vp, for the T3 Code fork (brings its own Node)
-gh auth setup-git                           # HTTPS git uses gh's login
+command -v vp                               # start a new login shell if the installer changed PATH
 restore-projects --check --setup --worktrees
 restore-projects --setup --worktrees
 ```
 
 This clones every project in [`projects.tsv`](../projects.tsv) into
 `~/Projects`, runs each one's setup (`npm ci`, `vp i`, the fork's `upstream`
-remote, a Python venv), and makes a worktree for every open PR. Then put back
-the files git doesn't hold (`publish.token`, SSH keys), listed in
+remote, a Python venv), and makes a worktree for each open PR from the same
+repository. For deploys, check the credentials listed in
 [`projects.md`](projects.md#files-that-are-not-in-git).
 
 ### 8. T3 Code (TLN2Code fork, macOS build)
@@ -191,7 +227,8 @@ the files git doesn't hold (`publish.token`, SSH keys), listed in
 Put the exported settings in place **before the first launch**:
 
 ```bash
-mkdir -p ~/.t3/userdata && rsync -a ~/migration/t3-settings/ ~/.t3/userdata/
+mkdir -p -m 700 ~/.t3/userdata
+rsync -a --ignore-existing ~/migration/t3-settings/ ~/.t3/userdata/
 ```
 
 Then build and install:
@@ -226,6 +263,10 @@ claude --version && codex --version
 ```
 
 Then run the bridge check in [`claude-codex.md`](claude-codex.md#verify).
+In each desktop app, ask it to consult the other on a throwaway example.
+In T3 Code, confirm the eight projects, TLN2Code scripts, native providers,
+and Raspberry Pi environment link. Check that the expected personal files
+open and that T3 Code starts successfully before removing any backup.
 
 ## iOS work with agents
 
