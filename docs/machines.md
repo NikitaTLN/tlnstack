@@ -57,14 +57,19 @@ Windows (`w1dget`):
 | `onlytuz` worktrees | `C:/Users/nikit/Projects/onlyoverlays-worktrees/<branch>` |
 | PowerShell `npm` shim | `npm.cmd` (`npm.ps1` is blocked) |
 
-## CLI proxy hub
+## CLI proxy hub (paused)
+
+Paused as of 2026-11-19. New machines, including the Mac, use native sign-in
+only. `alarm` and the Pi still have the hub configs. The notes below are for
+when it comes back.
 
 The `-hub` folders are the configs that route through the CLI proxy. The plain
 `~/.claude` and `~/.codex` are the native configs and are separate; only
 `settings.json` / `config.toml` differ, not the instructions or skills.
 
-T3 Code and the CLIs use the hub configs. The Claude and Codex desktop apps use
-the native configs and sign in directly (Claude Max, ChatGPT Pro).
+On `alarm`, T3 Code and the CLIs used the hub configs. The Claude and Codex
+desktop apps, and everything on the Mac, use the native configs (Claude Max,
+ChatGPT Pro).
 
 - Claude Code: `~/.claude-hub/settings.json` sets `ANTHROPIC_BASE_URL` to
   `https://raspberrypi.tailadf79f.ts.net:8317` and an auth token.

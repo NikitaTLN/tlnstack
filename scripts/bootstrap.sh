@@ -64,6 +64,7 @@ log "done"
 cat <<EOF
 Next:
   1. Make sure $BIN_DIR is on PATH.
-  2. Set up the hub config and bearer token (docs/machines.md, docs/credentials.md).
+  2. Sign in natively: claude, codex login, and the desktop apps.
+     (The CLI proxy hub is paused; don't set it up.)
   3. Verify: tlnstack --check && tstack-sync --check
 EOF

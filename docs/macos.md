@@ -27,7 +27,7 @@ the network. See [Moving data](#moving-data).
 | `OD-Overlay-Website` | `NikitaTLN/OD-Overlay-Website` | clone |
 | Profile README | `NikitaTLN/NikitaTLN` | clone if needed |
 | Third-party skills | `t3dotgg/tstack`, `mattpocock/skills` | cloned by the bootstrap |
-| Hub proxy, upstream T3 Code | the Raspberry Pi | already running; reach it over Tailscale |
+| Upstream T3 Code | the Raspberry Pi | already running; reach it over Tailscale |
 | Claude / ChatGPT accounts | Anthropic, OpenAI | sign in to the desktop apps |
 
 ## What is NOT in the cloud
@@ -43,7 +43,6 @@ the check below for a fresh list.
 | Codex desktop chats | `~/Documents/Codex` | 47 MB | Copy if you want the history. |
 | Notes, pictures | `~/newideas.md`, `~/overlayfeatureidea.md`, `~/Pictures`, `~/reports` | small | Copy. |
 | SSH keys | `~/.ssh` (GitHub, Pi, hosthatch, Nikitway deploy) | — | Copy over SSH, or make new keys and authorize them. Never commit. |
-| Hub tokens | `~/.claude-hub/settings.json`, `~/.codex-hub/config.toml` | — | Copy over SSH or the secret store. Never commit. |
 | T3 Code threads | `~/.t3/userdata` | 795 MB | Stays on Linux. Threads that must survive a reboot belong on the Pi's T3 server. |
 | `onlytuz` local-only work | 5 branches with unpushed commits, 1 stash, uncommitted `src/lib/miva.ts` | — | Push the branches you still want, or leave them on Linux. |
 | `OD-Overlay-Website` | staged `site/index.html` on `chore/record-publish-20261105` (no upstream) | — | Commit and push, or drop it. |
@@ -88,6 +87,10 @@ chmod 700 ~/.ssh && chmod 600 ~/.ssh/id_*
 
 Do these in order. Steps 4 to 7 are the same as [`new-machine.md`](new-machine.md).
 
+**No CLI proxy on the Mac.** The hub is paused. Skip every `-hub` step: no
+`~/.claude-hub`, no `~/.codex-hub`, no bearer token. Claude and Codex sign in
+natively everywhere on the Mac.
+
 ### 1. macOS basics
 
 - Update macOS. Sign in with your Apple ID.
@@ -122,7 +125,7 @@ brew install --cask tailscale
 ### 3. Tailscale
 
 Open Tailscale and sign in. Re-authorize `macbook-air-nikita`. Check that
-`ssh pi` and `curl -sI https://raspberrypi.tailadf79f.ts.net:8317` work.
+`ssh pi` works.
 
 ### 4. GitHub and tlnstack
 
@@ -135,15 +138,15 @@ cd tlnstack && ./scripts/bootstrap.sh
 
 The bootstrap links the instructions and skills (symlinks, same as Linux).
 
-### 5. Hub configs (CLI proxy)
+### 5. Native sign-in for the CLIs
 
-Copy from `alarm` or the Pi over SSH. Never through a commit:
+```bash
+claude        # sign in with Claude Max, then /exit
+codex login   # sign in with ChatGPT Pro
+```
 
-- `~/.claude-hub/settings.json`
-- `~/.codex-hub/config.toml` and `~/.codex-hub/model-catalog.json`
-
-Drop the `[mcp_servers.node_repl]` blocks from the copied `config.toml`. They
-point at Linux paths, and the Codex app writes its own.
+The desktop apps and the CLIs share `~/.claude` and `~/.codex`, so this is
+one sign-in each. No hub configs on this machine.
 
 ### 6. Desktop apps (native sign-in)
 
@@ -175,6 +178,8 @@ vp run dist:desktop:dmg:arm64
   Developer ID and `T3CODE_APPLE_TEAM_ID`).
 - Open the `.dmg` and drag T3 Code to Applications. If macOS says it is
   damaged, run `xattr -cr "/Applications/T3 Code.app"`.
+- In T3 Code's provider settings, enable the native **Claude**
+  (`claudeAgent`) and **Codex** (`codex`) instances. Don't add hub instances.
 - Link the Pi as an environment in T3 Code for threads that must survive a
   reboot into Linux.
 - For each nightly, follow [`updating.md`](updating.md) §4, but build with

@@ -22,6 +22,9 @@
 #   skills:       ~/.claude/skills, ~/.claude-hub/skills,
 #                 ~/.codex/skills, ~/.codex-hub/skills
 #
+# The -hub targets are optional: they are skipped when ~/.claude-hub or
+# ~/.codex-hub does not exist (the CLI proxy is paused on new machines).
+#
 # In copy mode a target is only overwritten when the installed copy still
 # matches what the last sync installed. Hand edits are reported and left alone
 # unless --force.
@@ -254,6 +257,15 @@ do_sync() {
 
   local dest record action
   for dest in "${INSTRUCTION_TARGETS[@]}"; do
+    # The CLI proxy hub is optional (paused on new machines): never create a
+    # -hub folder just to put instructions in it.
+    case "$(dirname "$dest")" in
+      "$CLAUDE_HUB_DIR"|"$CODEX_HUB_DIR")
+        if [ ! -d "$(dirname "$dest")" ]; then
+          printf '%-10s %s (hub folder missing)\n' skip "$dest"
+          continue
+        fi ;;
+    esac
     record=$(record_path "inst-$(slug "$dest")")
     action=$(classify file "$SRC_INSTRUCTIONS" "$dest" "$record")
     if [ "$action" = local-edit ] && [ "$FORCE" = 1 ]; then action=force; fi
@@ -267,8 +279,14 @@ do_sync() {
     name=$(basename "$src")
     for target in "${SKILL_TARGETS[@]}"; do
       if [ ! -d "$target" ]; then
-        printf '%-10s %-16s %s (folder missing)\n' skip "$name" "$target"
-        continue
+        # Native skill folders are created on a fresh machine; the optional
+        # -hub ones are only used when the hub is set up.
+        case "$target" in
+          "$CLAUDE_HUB_DIR"/*|"$CODEX_HUB_DIR"/*)
+            printf '%-10s %-16s %s (hub folder missing)\n' skip "$name" "$target"
+            continue ;;
+        esac
+        [ "$check" = 0 ] && mkdir -p "$target"
       fi
       dest="$target/$name"
       record=$(record_path "skill-$(slug "$dest")")

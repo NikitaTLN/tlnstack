@@ -51,8 +51,8 @@ Do not edit an installed copy directly.
   [`docs/claude-codex.md`](docs/claude-codex.md).
 - **Harnesses**: Claude Code (native `~/.claude`, or hub `~/.claude-hub` through
   the CLI proxy), Codex (native `~/.codex`, or hub `~/.codex-hub`), OpenCode
-  (native). The proxy is the Raspberry Pi on port 8317. The desktop apps use
-  the native configs.
+  (native). The proxy (Raspberry Pi, port 8317) is **paused**: new machines
+  use native sign-in only.
 - **Plans**: Claude Max ($100) and ChatGPT Pro ($100).
 - **Main machine**: macOS on a MacBook Air M2, dual-booting Arch (`alarm`). See
   [`docs/macos.md`](docs/macos.md).

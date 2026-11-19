@@ -1,21 +1,18 @@
 # Default setup
 
-- I use a **CLI proxy** for Claude Code and Codex, served from the Raspberry Pi
-  on port 8317. The `-hub` suffix marks the config that goes through it:
-  `~/.claude-hub` and `~/.codex-hub`.
-- `~/.claude` and `~/.codex` are the **native** configs, signed in to Claude and
-  ChatGPT directly. They are a different thing from the hub folders, not a copy
-  of them. `settings.json` and `config.toml` differ; the instructions and skills
-  are the same in both.
-- Instructions and skills are installed in both the native and hub folders. When
-  a harness runs through the proxy it reads the `-hub` folder, so look there
-  first for its config.
+- `~/.claude` and `~/.codex` are the **native** configs, signed in to Claude
+  (Max) and ChatGPT (Pro) directly. This is the default everywhere.
+- The **CLI proxy is paused** (as of 2026-11-19). It runs on the Raspberry Pi,
+  port 8317, and its configs carry a `-hub` suffix: `~/.claude-hub` and
+  `~/.codex-hub`. Don't set it up on a new machine, including the Mac. Only
+  `alarm` still has the hub folders. Where they exist, they hold the same
+  instructions and skills, and a harness running through the proxy reads them
+  first.
 - OpenCode runs natively; its global instructions live in
   `~/.config/opencode/AGENTS.md`.
 - I work in three places: **T3 Code**, the **Claude desktop app**, and the
-  **Codex desktop app**. The desktop apps use the native configs (`~/.claude`,
-  `~/.codex`) and sign in directly. T3 Code and the CLIs use the `-hub`
-  configs.
+  **Codex desktop app**. All of them use the native configs on the Mac. On
+  `alarm`, T3 Code and the CLIs may still use the `-hub` configs.
 - My main machine is a MacBook Air M2. It dual-boots **macOS** (main, needed
   for Xcode and iOS work) and Arch Linux (Asahi, host `alarm`). See
   `~/Projects/tlnstack/docs/macos.md`.
@@ -62,8 +59,8 @@ second opinion, a cross-review, or a hand-off ("ask codex", "ask claude",
   run the other CLI headless in the same repo and bring its answer back.
 - In T3 Code, use `delegate_task` to the other provider instead, so the child
   shows up in T3 Code.
-- The child matches the caller's config: a hub session calls the hub, a
-  desktop app calls native.
+- The child matches the caller's config: native by default; a hub session on
+  `alarm` calls the hub.
 - A bridged child gets `TLN_BRIDGE=1` and never calls back. One hop only.
 - The child works read-only unless I ask it to write code. Then it works in its
   own worktree, and the caller reviews its diff before committing.
@@ -127,10 +124,11 @@ Plans: Claude Max ($100) and ChatGPT Pro ($100). Both have about 5x the usage
 of the $20 plans, so council has room to run. Still keep it lean: two members,
 only when I ask.
 
-- Members: two, on purpose. Claude Opus 5.5 on Claude Hub (`claudeAgent_2`,
-  effort `high`) and GPT-6.1 Sol on Codex Hub (`codex_2`, reasoningEffort
-  `high`). Don't report the missing third provider, and don't add a second model
-  from the same provider.
+- Members: two, on purpose. Claude Opus 5.5 on native Claude (`claudeAgent`,
+  effort `high`) and GPT-6.1 Sol on native Codex (`codex`, reasoningEffort
+  `high`). If the native instance is disabled (on `alarm`), use the hub one
+  (`claudeAgent_2`, `codex_2`). Don't report the missing third provider, and
+  don't add a second model from the same provider.
 - Don't use Fable for council. It needs extra usage credits.
 - Run council only when I ask for it, not for every change.
 - Round 1: both members review in parallel. Give them the diff, the goal, and

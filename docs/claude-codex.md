@@ -12,9 +12,9 @@ desktop app**. In each one, Claude can ask Codex and Codex can ask Claude.
 | T3 Code (either) | the other | `delegate_task` with the other provider |
 
 Both skills live in this repo (`skills/ask-codex`, `skills/ask-claude`), so
-tlnstack installs them into all four skill folders. The desktop apps read the
-native folders (`~/.claude/skills`, `~/.codex/skills`); the CLIs and T3 Code
-read the `-hub` folders. So every app gets the same bridge without extra setup.
+tlnstack installs them into every skill folder that exists: the native ones
+(`~/.claude/skills`, `~/.codex/skills`) and, on `alarm`, the `-hub` ones. So
+every app gets the same bridge without extra setup.
 
 Why skills and not MCP:
 
@@ -30,8 +30,9 @@ Why skills and not MCP:
 
 - **One hop.** The caller sets `TLN_BRIDGE=1`; a child that sees it never calls
   back. No Claude → Codex → Claude loops.
-- **Same side.** A hub caller calls the hub (`CODEX_HOME` / `CLAUDE_CONFIG_DIR`
-  set to the `-hub` folder). A desktop app calls native.
+- **Same side.** Native by default. A hub caller on `alarm` calls the hub
+  (`CODEX_HOME` / `CLAUDE_CONFIG_DIR` set to the `-hub` folder). The Mac has no
+  hub (the proxy is paused), so it is always native there.
 - **Read-only by default.** Consult and review modes can't write. Task mode
   writes only in the child's own worktree. The caller reviews the diff before
   committing.

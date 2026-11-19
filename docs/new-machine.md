@@ -87,7 +87,11 @@ truth); `git pull` is then enough to update it. On Windows it copies. Pass `--li
 `--copy` to force either mode. `--capture` is only useful in copy mode; on a
 linked machine, edits land in the repo directly.
 
-## 4. Hub configuration
+## 4. Hub configuration (paused: skip it)
+
+The CLI proxy is paused as of 2026-11-19. **Don't set it up on a new
+machine.** Sign in natively instead (`claude`, `codex login`, the desktop
+apps). The rest of this section is kept for when the proxy comes back.
 
 Claude Code and Codex each have two configs: the **native** one
 (`~/.claude`, `~/.codex`) signed in to Claude and ChatGPT directly, and the
@@ -130,8 +134,8 @@ Then start each harness once and confirm it picks up the instructions:
 
 | Harness | Check |
 | --- | --- |
-| Claude Code | `claude` prints no error; it reads `~/.claude-hub/CLAUDE.md` |
-| Codex | `codex` reads `~/.codex-hub/AGENTS.md` |
+| Claude Code | `claude` prints no error; it reads `~/.claude/CLAUDE.md` |
+| Codex | `codex` reads `~/.codex/AGENTS.md` |
 | OpenCode | reads `~/.config/opencode/AGENTS.md` |
 | Claude desktop app | the skill list shows `ask-codex` |
 | Codex desktop app | the skill list shows `ask-claude` |
