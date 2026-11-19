@@ -21,7 +21,7 @@ Use this skill for a file the user opens in a browser. For a page shown inline i
    - A `note` block for warnings the user must see.
    - Next steps as numbered steps or a short list.
    - Footer with the date and the source (repo, commit, or files read).
-4. Open it: `xdg-open ~/reports/<slug>.html >/dev/null 2>&1 &`
+4. Open it: `open ~/reports/<slug>.html` on macOS, `xdg-open ~/reports/<slug>.html >/dev/null 2>&1 &` on Linux
 5. Reply with the absolute path as a link and one line on what the report covers. Do not restate the report's contents.
 
 ## Style block

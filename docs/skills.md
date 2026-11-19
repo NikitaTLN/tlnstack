@@ -4,8 +4,8 @@ Three sources, all installed into the same skill folders.
 
 ## Personal (this repo)
 
-Installed by `tlnstack` into every skill folder (linked on Linux, copied on
-Windows).
+Installed by `tlnstack` into every skill folder (linked on Linux and macOS,
+copied on Windows).
 
 | Skill | Say | What it does |
 | --- | --- | --- |
@@ -14,6 +14,8 @@ Windows).
 | `browser-report` | "browser report" | A styled standalone HTML report in `~/reports`, opened in the browser. |
 | `tstack-sync` | "update tstack" | Checks and applies upstream `t3dotgg/tstack` updates. |
 | `tlnstack-sync` | "update tlnstack", "sync my stack" | Checks and applies this repo's files and skills. |
+| `ask-codex` | "ask codex" | Claude calls Codex headless (`codex exec`) for a second opinion, review, or task. |
+| `ask-claude` | "ask claude" | Codex calls Claude headless (`claude -p`). The mirror of `ask-codex`. See [`claude-codex.md`](claude-codex.md). |
 
 ## t3dotgg/tstack (third-party)
 

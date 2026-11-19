@@ -30,7 +30,7 @@ unchanged, to every harness:
 | Path | What it is |
 | --- | --- |
 | `agents/AGENTS.md` | The canonical global instructions. |
-| `skills/` | Personal skills (`git-workflow`, `redo`, `browser-report`, `tstack-sync`, `tlnstack-sync`). |
+| `skills/` | Personal skills (`git-workflow`, `redo`, `browser-report`, `tstack-sync`, `tlnstack-sync`, `ask-codex`, `ask-claude`). |
 | `scripts/tlnstack` | The sync CLI. |
 | `scripts/tstack-sync.sh` | The third-party tstack skill sync. |
 | `scripts/bootstrap.sh` | Fresh-machine setup. |
@@ -40,7 +40,7 @@ unchanged, to every harness:
 
 1. Edit `agents/AGENTS.md` or a skill here. Never edit an installed copy.
 2. `./scripts/tlnstack --check` then `./scripts/tlnstack` to install it here. On
-   Linux the installed files are symlinks, so the edit is live; the sync just
+   Linux and macOS the installed files are symlinks, so the edit is live; the sync just
    records it.
 3. `./scripts/tstack-sync.sh --check` if a third-party skill changed.
 4. Update the matching doc under `docs/` if behaviour changed.
@@ -51,6 +51,8 @@ unchanged, to every harness:
 - Never commit a secret. Hub bearer tokens, `~/.codex/auth.json`,
   `~/.t3/userdata/secrets/`, `publish.token`, and `*.env` with real values stay
   out. See `docs/credentials.md`.
+- Scripts run on Linux, macOS (bash 4+ from Homebrew, BSD tools), and Git Bash
+  on Windows. No GNU-only flags without a fallback.
 - Keep `agents/AGENTS.md` harness-agnostic: no Claude-only or Codex-only tool
   names outside the T3 Code section, which is explicitly about T3 Code.
 - One canonical copy. If a rule belongs to everyone, it goes in

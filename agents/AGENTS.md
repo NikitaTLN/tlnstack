@@ -12,10 +12,18 @@
   first for its config.
 - OpenCode runs natively; its global instructions live in
   `~/.config/opencode/AGENTS.md`.
-- This file is installed by **tlnstack** (`~/Projects/tlnstack`). On Linux it is
-  symlinked to the repo, so an edit in the repo is live; run `tlnstack sync`
-  anyway to record state, then commit and push. On Windows it is a copy, so
-  `tlnstack sync` is required. Do not edit an installed copy directly.
+- I work in three places: **T3 Code**, the **Claude desktop app**, and the
+  **Codex desktop app**. The desktop apps use the native configs (`~/.claude`,
+  `~/.codex`) and sign in directly. T3 Code and the CLIs use the `-hub`
+  configs.
+- My main machine is a MacBook Air M2. It dual-boots **macOS** (main, needed
+  for Xcode and iOS work) and Arch Linux (Asahi, host `alarm`). See
+  `~/Projects/tlnstack/docs/macos.md`.
+- This file is installed by **tlnstack** (`~/Projects/tlnstack`). On Linux and
+  macOS it is symlinked to the repo, so an edit in the repo is live; run
+  `tlnstack sync` anyway to record state, then commit and push. On Windows it is
+  a copy, so `tlnstack sync` is required. Do not edit an installed copy
+  directly.
 
 # Working style
 
@@ -43,6 +51,27 @@
 - Subagents on another provider's model: `delegate_task`, not a native subagent.
 - Waiting on a PR: `watch_pull_request`, not a sleep or polling loop.
 - Credentials: `request_secret`, not a chat ask. See below.
+
+# Claude and Codex together
+
+Claude and Codex can call each other from any app. Use this when I ask for a
+second opinion, a cross-review, or a hand-off ("ask codex", "ask claude",
+"both of you look at this").
+
+- From Claude: the `ask-codex` skill. From Codex: the `ask-claude` skill. Both
+  run the other CLI headless in the same repo and bring its answer back.
+- In T3 Code, use `delegate_task` to the other provider instead, so the child
+  shows up in T3 Code.
+- The child matches the caller's config: a hub session calls the hub, a
+  desktop app calls native.
+- A bridged child gets `TLN_BRIDGE=1` and never calls back. One hop only.
+- The child works read-only unless I ask it to write code. Then it works in its
+  own worktree, and the caller reviews its diff before committing.
+- Report which model said what, and give your own view. Don't apply the other
+  model's advice unchecked.
+- Not on every change. Only when I ask, or for council.
+
+Full guide: `~/Projects/tlnstack/docs/claude-codex.md`.
 
 # Credentials
 
@@ -94,14 +123,15 @@ Full guide: `~/Projects/tlnstack/docs/credentials.md`.
 
 # Council (personal settings for the tstack `council` skill)
 
-Plans: Claude Pro ($20) and ChatGPT Plus ($20). Both have tight 5-hour limits,
-so council is built to spend little.
+Plans: Claude Max ($100) and ChatGPT Pro ($100). Both have about 5x the usage
+of the $20 plans, so council has room to run. Still keep it lean: two members,
+only when I ask.
 
 - Members: two, on purpose. Claude Opus 5.5 on Claude Hub (`claudeAgent_2`,
   effort `high`) and GPT-6.1 Sol on Codex Hub (`codex_2`, reasoningEffort
   `high`). Don't report the missing third provider, and don't add a second model
   from the same provider.
-- Don't use Fable for council. It drains a Pro plan too fast.
+- Don't use Fable for council. It needs extra usage credits.
 - Run council only when I ask for it, not for every change.
 - Round 1: both members review in parallel. Give them the diff, the goal, and
   the checks that ran. Ask for findings tagged `important`, `nit`, or

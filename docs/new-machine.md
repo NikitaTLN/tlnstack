@@ -6,6 +6,8 @@ way as the others. This is the checklist, in order.
 ## 0. What the machine needs first
 
 Install these, then continue. Versions are the ones on `alarm`; newer is fine.
+**On macOS**, follow [`macos.md`](macos.md) instead; it covers Homebrew, Xcode,
+bash 4, and the desktop apps.
 
 | Tool | Why | Install |
 | --- | --- | --- |
@@ -17,6 +19,8 @@ Install these, then continue. Versions are the ones on `alarm`; newer is fine.
 | `codex` | Codex | `npm i -g @openai/codex` |
 | `opencode` | OpenCode | `npm i -g opencode-ai` |
 | T3 Code | the control surface | the app, then link the machine |
+| Claude desktop app | Claude, native sign-in | claude.ai/download (macOS, Windows) |
+| Codex desktop app | Codex, native sign-in | OpenAI's Codex app |
 
 Sign in to Tailscale so the CLI proxy on `raspberrypi` and the other machines
 are reachable.
@@ -78,8 +82,8 @@ A target that already has local edits is left alone and reported; re-run with
 `--force` to overwrite it. Backups go to
 `~/.local/state/tlnstack-sync/backups/`.
 
-On Linux, `tlnstack` links each target to this repo (one source of truth); `git
-pull` is then enough to update it. On Windows it copies. Pass `--link` or
+On Linux and macOS, `tlnstack` links each target to this repo (one source of
+truth); `git pull` is then enough to update it. On Windows it copies. Pass `--link` or
 `--copy` to force either mode. `--capture` is only useful in copy mode; on a
 linked machine, edits land in the repo directly.
 
@@ -129,6 +133,10 @@ Then start each harness once and confirm it picks up the instructions:
 | Claude Code | `claude` prints no error; it reads `~/.claude-hub/CLAUDE.md` |
 | Codex | `codex` reads `~/.codex-hub/AGENTS.md` |
 | OpenCode | reads `~/.config/opencode/AGENTS.md` |
+| Claude desktop app | the skill list shows `ask-codex` |
+| Codex desktop app | the skill list shows `ask-claude` |
+
+Then run the bridge check in [`claude-codex.md`](claude-codex.md#verify).
 
 ## Keeping a machine current
 
@@ -143,6 +151,6 @@ Or, in an agent, say **"update tlnstack"** or **"update tstack"**; the
 ## Changing the shared setup
 
 Edit `agents/AGENTS.md` or a skill **in this repo**, never an installed copy.
-On Linux the installed files are symlinks, so the change is live; commit and
-push, and other Linux machines pick it up with `git pull`. On Windows, run
+On Linux and macOS the installed files are symlinks, so the change is live;
+commit and push, and other machines pick it up with `git pull`. On Windows, run
 `tlnstack sync` after the change. See the repo `AGENTS.md`.

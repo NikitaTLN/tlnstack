@@ -30,6 +30,12 @@ merged, update by hand: see the TLN2Code section of
 [`updating.md`](updating.md), which also has the arm64 AppImage build and
 install steps.
 
+## macOS build
+
+On the MacBook's macOS side, build the fork as an unsigned arm64 DMG:
+`vp run dist:desktop:dmg:arm64`. It needs Rust and the Xcode Command Line
+Tools. Setup and install steps: [`macos.md`](macos.md#7-t3-code-tln2code-fork-macos-build).
+
 Nightly sync prepares an update worktree for review; it does not deploy,
 publish, or overwrite local changes. Stable and preview releases are excluded.
 The initial fork uses manual artifact installs. Provider credentials, local

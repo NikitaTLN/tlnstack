@@ -34,8 +34,11 @@ git -C "$REPO" pull --quiet --ff-only
 after=$(git -C "$REPO" rev-parse --short HEAD)
 echo "upstream: $before -> $after"
 
+# Linux has sha256sum; macOS has shasum. Same output format, same hashes.
+if command -v sha256sum >/dev/null 2>&1; then SHA=(sha256sum); else SHA=(shasum -a 256); fi
+
 tree_hash() {
-  (cd "$1" && find . -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)
+  (cd "$1" && find . -type f -print0 | sort -z | xargs -0 "${SHA[@]}" | "${SHA[@]}" | cut -d' ' -f1)
 }
 
 mkdir -p "$STATE"
@@ -51,7 +54,7 @@ for src in "$REPO"/skills/*/; do
     fi
 
     dest="$target/$name"
-    slug=$(printf '%s' "$target" | sha256sum | cut -c1-12)
+    slug=$(printf '%s' "$target" | "${SHA[@]}" | cut -c1-12)
     record="$STATE/$slug-$name"
 
     if [ ! -e "$dest" ]; then

@@ -38,17 +38,24 @@ tlnstack --capture   # pull a local edit back into this repo
 tstack-sync          # update Theo's skills from upstream
 ```
 
-On Linux, `tlnstack` links each harness file and skill to this repo, so the
-shared setup is live: edit `agents/AGENTS.md` or a skill **in this repo**,
-commit, and push. Other Linux machines pick it up with `git pull` (no sync
+On Linux and macOS, `tlnstack` links each harness file and skill to this repo,
+so the shared setup is live: edit `agents/AGENTS.md` or a skill **in this
+repo**, commit, and push. Other machines pick it up with `git pull` (no sync
 needed). On Windows, copies are used, so run `tlnstack sync` after a change.
 Do not edit an installed copy directly.
 
 ## The stack
 
+- **Apps**: T3 Code, the Claude desktop app, and the Codex desktop app. Claude
+  and Codex call each other through the `ask-codex` / `ask-claude` skills. See
+  [`docs/claude-codex.md`](docs/claude-codex.md).
 - **Harnesses**: Claude Code (native `~/.claude`, or hub `~/.claude-hub` through
   the CLI proxy), Codex (native `~/.codex`, or hub `~/.codex-hub`), OpenCode
-  (native). The proxy is the Raspberry Pi on port 8317.
+  (native). The proxy is the Raspberry Pi on port 8317. The desktop apps use
+  the native configs.
+- **Plans**: Claude Max ($100) and ChatGPT Pro ($100).
+- **Main machine**: macOS on a MacBook Air M2, dual-booting Arch (`alarm`). See
+  [`docs/macos.md`](docs/macos.md).
 - **Skills**: mine (`skills/` here), Theo's (`t3dotgg/tstack`), Matt Pocock's
   (`mattpocock/skills`), plus the Claude plugin skills and Omarchy's.
 - **Credentials**: agents use T3 Code's secret store first, never a chat ask.
@@ -68,6 +75,8 @@ Do not edit an installed copy directly.
 | [`docs/skills.md`](docs/skills.md) | Every skill and where it comes from. |
 | [`docs/t3-code.md`](docs/t3-code.md) | The T3 Code features used by default. |
 | [`docs/new-machine.md`](docs/new-machine.md) | Setting up a fresh machine. |
+| [`docs/macos.md`](docs/macos.md) | macOS on the MacBook Air: what is in the cloud, what to move, setup. |
+| [`docs/claude-codex.md`](docs/claude-codex.md) | Claude and Codex calling each other from any app. |
 | [`docs/updating.md`](docs/updating.md) | Updating every tool on `alarm` and the Pi, with the known traps. |
 
 ## License

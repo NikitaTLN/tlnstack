@@ -27,7 +27,7 @@ hub copies, `~/.config/opencode/AGENTS.md`) and the personal skills in step with
    ```
 
 3. Show the user the result as a short table: target, action.
-   - `install`: not present yet, will be linked (Linux) or copied (Windows).
+   - `install`: not present yet, will be linked (Linux, macOS) or copied (Windows).
    - `adopt`: present but never managed by tlnstack. Taken over on the first
      run, with a backup.
    - `update`: the repo changed and the installed copy was untouched (copy mode).

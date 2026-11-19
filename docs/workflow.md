@@ -20,10 +20,15 @@ request / issue
 
 ## Harnesses and machines
 
-- Agents run through **T3 Code**. Claude Code has a native config
-  (`~/.claude`) and a hub config (`~/.claude-hub`); Codex has `~/.codex` and
-  `~/.codex-hub`. The `-hub` folders route through the CLI proxy on the
-  Raspberry Pi, the plain folders sign in directly. OpenCode runs natively.
+- Agents run in **T3 Code**, the **Claude desktop app**, and the **Codex
+  desktop app**. Claude Code has a native config (`~/.claude`) and a hub config
+  (`~/.claude-hub`); Codex has `~/.codex` and `~/.codex-hub`. The `-hub`
+  folders route through the CLI proxy on the Raspberry Pi (T3 Code and the
+  CLIs); the plain folders sign in directly (the desktop apps). OpenCode runs
+  natively.
+- Claude and Codex call each other with the `ask-codex` / `ask-claude` skills,
+  or `delegate_task` in T3 Code. See `docs/claude-codex.md`.
+- Main machine: macOS on the MacBook Air (Xcode, iOS). See `docs/macos.md`.
 - Every harness gets the same global instructions (this repo's
   `agents/AGENTS.md`) and the same skills.
 - Machine inventory and paths: `docs/machines.md`.

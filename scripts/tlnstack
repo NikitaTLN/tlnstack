@@ -8,8 +8,8 @@
 #   --check         show what sync would do; write nothing.
 #   --capture       copy an installed file that was edited by hand back into the
 #                   repo, so it can be committed. Refuses when targets disagree.
-#   --link          symlink every target to the repo (default on Linux). One
-#                   source of truth: `git pull` updates every harness.
+#   --link          symlink every target to the repo (default on Linux and
+#                   macOS). One source of truth: `git pull` updates every harness.
 #   --copy          copy the content instead (default on Windows, where symlinks
 #                   need Developer Mode).
 #   --force         overwrite a target that has local edits.
@@ -30,6 +30,12 @@
 # TLNSTACK_INSTALL (link|copy), TLNSTACK_CLAUDE_DIR, TLNSTACK_CLAUDE_HUB_DIR,
 # TLNSTACK_CODEX_DIR, TLNSTACK_CODEX_HUB_DIR, TLNSTACK_OPENCODE_DIR.
 set -euo pipefail
+
+# macOS ships bash 3.2; this script uses associative arrays (bash 4+).
+if [ "${BASH_VERSINFO[0]:-0}" -lt 4 ]; then
+  echo "tlnstack: needs bash 4 or newer (on macOS: brew install bash)" >&2
+  exit 1
+fi
 
 self=$(readlink -f "${BASH_SOURCE[0]}")
 REPO="${TLNSTACK_REPO:-$(cd "$(dirname "$self")/.." && pwd)}"
@@ -57,8 +63,8 @@ SKILL_TARGETS=(
   "$CODEX_HUB_DIR/skills"
 )
 
-# Symlinks work on Linux; on Windows they need Developer Mode, so default to a
-# copy there.
+# Symlinks work on Linux and macOS; on Windows they need Developer Mode, so
+# default to a copy there.
 default_install=link
 case "$(uname -s 2>/dev/null || echo unknown)" in
   MINGW*|MSYS*|CYGWIN*|Windows_NT) default_install=copy ;;
@@ -78,7 +84,7 @@ Usage: tlnstack [sync|check|capture] [--link|--copy] [--force] [--repo DIR]
   --check         show what sync would do; write nothing.
   --capture       copy an installed file that was edited by hand back into the
                   repo, so it can be committed. Refuses when targets disagree.
-  --link          symlink every target to the repo (default on Linux).
+  --link          symlink every target to the repo (default on Linux and macOS).
   --copy          copy the content instead (default on Windows).
   --force         overwrite a target that has local edits.
   --repo DIR      use DIR as the repo root (default: this script's repo).
@@ -120,9 +126,13 @@ if [ ! -f "$SRC_INSTRUCTIONS" ]; then
   exit 1
 fi
 
-file_hash() { sha256sum "$1" | cut -d' ' -f1; }
-tree_hash() { (cd "$1" && find . -type f -print0 | sort -z | xargs -0 -r sha256sum | sha256sum) | cut -d' ' -f1; }
-slug() { printf '%s' "$1" | sha256sum | cut -c1-12; }
+# Linux has sha256sum; macOS has shasum. Both print "<hash>  <path>", so the
+# hashes (and the install records) match across systems.
+if command -v sha256sum >/dev/null 2>&1; then SHA=(sha256sum); else SHA=(shasum -a 256); fi
+if xargs -r true </dev/null >/dev/null 2>&1; then XARGS_R=(-r); else XARGS_R=(); fi
+file_hash() { "${SHA[@]}" "$1" | cut -d' ' -f1; }
+tree_hash() { (cd "$1" && find . -type f -print0 | sort -z | xargs -0 "${XARGS_R[@]}" "${SHA[@]}" | "${SHA[@]}") | cut -d' ' -f1; }
+slug() { printf '%s' "$1" | "${SHA[@]}" | cut -c1-12; }
 record_path() { printf '%s/%s' "$STATE" "$1"; }
 
 hash_of() {
