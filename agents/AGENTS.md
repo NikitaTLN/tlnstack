@@ -121,27 +121,38 @@ Full guide: `~/Projects/tlnstack/docs/credentials.md`.
 # Council (personal settings for the tstack `council` skill)
 
 Plans: Claude Max ($100) and ChatGPT Pro ($100). Both have about 5x the usage
-of the $20 plans, so council has room to run. Still keep it lean: two members,
-only when I ask.
+of the $20 plans. Council uses the strongest models on both, so run it only
+when I ask, not for every change.
 
-- Members: two, on purpose. Claude Opus 5.5 on native Claude (`claudeAgent`,
-  effort `high`) and GPT-6.1 Sol on native Codex (`codex`, reasoningEffort
-  `high`). If the native instance is disabled (on `alarm`), use the hub one
-  (`claudeAgent_2`, `codex_2`). Don't report the missing third provider, and
-  don't add a second model from the same provider.
-- Don't use Fable for council. It needs extra usage credits.
-- Run council only when I ask for it, not for every change.
-- Round 1: both members review in parallel. Give them the diff, the goal, and
-  the checks that ran. Ask for findings tagged `important`, `nit`, or
+- Members: four, two per provider, all at effort `high`. This replaces the
+  skill's "one model from each of three providers". Don't report a missing
+  third provider.
+
+  | Member | Instance | Model id |
+  | --- | --- | --- |
+  | Claude Opus 5.5 | `claudeAgent` | `claude-opus-5-5` |
+  | Claude Fable 5.2 | `claudeAgent` | `claude-fable-5-2` |
+  | GPT-6.2 Sol | `codex` | `gpt-6.2-sol` |
+  | GPT-6.2 Astra | `codex` | `gpt-6.2-astra` |
+
+  If the native instance is disabled (on `alarm`), use the hub one
+  (`claudeAgent_2`, `codex_2`).
+- Fable draws extra usage credits on Max. That is accepted for council. When
+  the credits run out, treat it as a usage limit (below).
+- Round 1: all four review in parallel. Give them the diff, the goal, and the
+  checks that ran. Ask for findings tagged `important`, `nit`, or
   `pre-existing`, and a score out of 10. Don't tell them the passing score.
-- Pass: 8/10 or better and no open `important` finding. Ignore nits unless they
-  are cheap to fix.
+- Member passes: 8/10 or better and none of its `important` findings open. A
+  finding is closed when it is fixed, or when I checked it, found it wrong,
+  and said why in the report. Ignore nits unless they are cheap to fix.
+- Council passes when every member has passed. A member that passed doesn't
+  review again.
 - Later rounds: ask only the members who did not pass, and send only the new
   diff. Don't repeat findings already fixed or closed.
 - Stop after 3 rounds. Report what is still open and suggest a different
   approach instead of another round.
 - If a member hits a usage limit, stop that member, write `usage limit` in its
-  score cell, and finish with the other. Don't swap in another model.
+  score cell, and finish with the others. Don't swap in another model.
 
 <!-- mattpocock-skills-library -->
 ## Matt Pocock skill library
