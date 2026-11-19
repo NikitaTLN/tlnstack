@@ -34,6 +34,8 @@ unchanged, to every harness:
 | `scripts/tlnstack` | The sync CLI. |
 | `scripts/tstack-sync.sh` | The third-party tstack skill sync. |
 | `scripts/bootstrap.sh` | Fresh-machine setup. |
+| `projects.tsv`, `scripts/restore-projects` | The project list and the script that clones and sets them up. Add new projects here. |
+| `scripts/t3-portable-settings` | T3 Code settings export for a new machine. |
 | `docs/` | The long-form docs. Keep them in step with `agents/AGENTS.md`. |
 
 ## The loop for changing the setup

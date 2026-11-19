@@ -50,7 +50,9 @@ install -m 0755 "$REPO/scripts/tstack-sync.sh" "$TSTACK_SYNC_DIR/sync.sh"
 ln -sf "$TSTACK_SYNC_DIR/sync.sh" "$BIN_DIR/tstack-sync"
 ln -sf "$REPO/scripts/tlnstack" "$BIN_DIR/tlnstack"
 ln -sf "$REPO/scripts/codex-hub-catalog" "$BIN_DIR/codex-hub-catalog"
+ln -sf "$REPO/scripts/restore-projects" "$BIN_DIR/restore-projects"
 echo "linked  $BIN_DIR/tlnstack"
+echo "linked  $BIN_DIR/restore-projects"
 echo "linked  $BIN_DIR/tstack-sync"
 echo "linked  $BIN_DIR/codex-hub-catalog"
 
@@ -67,4 +69,5 @@ Next:
   2. Sign in natively: claude, codex login, and the desktop apps.
      (The CLI proxy hub is paused; don't set it up.)
   3. Verify: tlnstack --check && tstack-sync --check
+  4. Projects: restore-projects --setup --worktrees  (docs/projects.md)
 EOF

@@ -17,15 +17,14 @@ the network. See [Moving data](#moving-data).
 
 ## What is already in the cloud
 
+Every project is on GitHub and listed in [`projects.tsv`](../projects.tsv).
+`restore-projects` clones them all, runs their setup, and recreates a worktree
+for each open PR. Details: [`projects.md`](projects.md).
+
 | Thing | Where | On macOS |
 | --- | --- | --- |
 | tlnstack (this repo) | `NikitaTLN/tlnstack` | clone, bootstrap |
-| `onlytuz` | `9kantawis/onlytuz` | clone; recreate worktrees only for active branches |
-| T3 Code fork | `NikitaTLN/TLN2Code` | clone, build the macOS app (below) |
-| `voxtype-flow` | `NikitaTLN/voxtype-flow` | clone (Linux dictation tool; macOS has its own) |
-| `Textio` | `NikitaTLN/Textio` | clone |
-| `OD-Overlay-Website` | `NikitaTLN/OD-Overlay-Website` | clone |
-| Profile README | `NikitaTLN/NikitaTLN` | clone if needed |
+| `onlytuz`, `t3code` (TLN2Code), `Nikitway`, `voxtype-flow`, `Textio`, `NikitaTLN`, `OD-Overlay-Website` | GitHub | `restore-projects --setup --worktrees` |
 | Third-party skills | `t3dotgg/tstack`, `mattpocock/skills` | cloned by the bootstrap |
 | Upstream T3 Code | the Raspberry Pi | already running; reach it over Tailscale |
 | Claude / ChatGPT accounts | Anthropic, OpenAI | sign in to the desktop apps |
@@ -37,13 +36,15 @@ the check below for a fresh list.
 
 | Thing | Path on `alarm` | Size | Action |
 | --- | --- | --- | --- |
-| Nikitway site and brand assets | `~/Projects/Nikitway` | 293 MB (most is `node_modules`) | Make it a git repo and push it (private). |
 | onlydrafts handoff docs | `~/Projects/onlydrafts-website-handoff` | 3 MB | Push it, or move it into `onlytuz/docs`. |
 | Obsidian vault | `~/ObsidianVault` | 46 MB | Check that Obsidian Sync is really on, or copy it. |
 | Codex desktop chats | `~/Documents/Codex` | 47 MB | Copy if you want the history. |
 | Notes, pictures | `~/newideas.md`, `~/overlayfeatureidea.md`, `~/Pictures`, `~/reports` | small | Copy. |
-| SSH keys | `~/.ssh` (GitHub, Pi, hosthatch, Nikitway deploy) | — | Copy over SSH, or make new keys and authorize them. Never commit. |
-| T3 Code threads | `~/.t3/userdata` | 795 MB | Stays on Linux. Threads that must survive a reboot belong on the Pi's T3 server. |
+| SSH keys and config | `~/.ssh` (GitHub, Pi, hosthatch, Nikitway deploy, OD SFTP) | — | Copy over SSH, or make new keys and authorize them. Never commit. |
+| onlytuz release token | `~/Projects/onlytuz/publish.token` | — | **Secret.** Copy over SSH. Never commit. |
+| T3 Code settings | `~/.t3/userdata` (settings, keybindings, themes) | small | Export with `t3-portable-settings` (see [`projects.md`](projects.md#2-t3-code-data-t3)). |
+| T3 Code threads | `~/.t3/userdata/statev2.sqlite` | 360 MB | Stays on Linux. Threads that must survive a reboot belong on the Pi's T3 server. |
+| mise tool list | `~/.config/mise/config.toml` | — | Copy. |
 | `onlytuz` local-only work | 5 branches with unpushed commits, 1 stash, uncommitted `src/lib/miva.ts` | — | Push the branches you still want, or leave them on Linux. |
 | `OD-Overlay-Website` | staged `site/index.html` on `chore/record-publish-20261105` (no upstream) | — | Commit and push, or drop it. |
 
@@ -51,6 +52,7 @@ Check for unpushed work in any repo:
 
 ```bash
 for r in ~/Projects/*/ ~/OD-Overlay-Website; do
+  case "$r" in *-worktrees/) continue ;; esac
   [ -e "$r/.git" ] || { echo "NOT GIT  $r"; continue; }
   echo "== $r"
   git -C "$r" status --short | head -5
@@ -67,25 +69,30 @@ On Linux (`alarm`), before rebooting:
 
 ```bash
 ssh pi 'mkdir -p ~/migration && chmod 700 ~/migration'
-rsync -a --exclude node_modules --exclude dist --exclude .astro \
-  ~/Projects/Nikitway ~/Projects/onlydrafts-website-handoff \
+rsync -a ~/Projects/onlydrafts-website-handoff \
   ~/ObsidianVault ~/Documents/Codex ~/Pictures ~/reports \
-  ~/newideas.md ~/overlayfeatureidea.md  pi:migration/
-rsync -a ~/.ssh/ pi:migration/ssh/      # only if you copy keys
+  ~/newideas.md ~/overlayfeatureidea.md ~/.config/mise/config.toml pi:migration/
+~/Projects/tlnstack/scripts/t3-portable-settings ~/t3-settings && rsync -a ~/t3-settings pi:migration/
+rsync -a ~/.ssh/ pi:migration/ssh/                                # keys + config
+rsync -a ~/Projects/onlytuz/publish.token pi:migration/secrets/  # secret
 ```
 
-On macOS, after Tailscale is up:
+On macOS, after Tailscale is up. The Pi runs **Tailscale SSH**, so this works
+before any SSH key or `~/.ssh/config` is on the Mac (use the full
+`pi@raspberrypi`; the `pi` alias comes with the copied config):
 
 ```bash
-rsync -a pi:migration/ ~/migration/
-# move each item to its place, then:
-ssh pi 'rm -rf ~/migration'             # don't leave keys on the Pi
+rsync -a pi@raspberrypi:migration/ ~/migration/
+# move each item to its place:
+#   ssh/ -> ~/.ssh   config.toml -> ~/.config/mise/   t3-settings/ -> ~/.t3/userdata/
+#   secrets/publish.token -> ~/Projects/onlytuz/  (after restore-projects)
+ssh pi@raspberrypi 'rm -rf ~/migration'   # don't leave keys on the Pi
 chmod 700 ~/.ssh && chmod 600 ~/.ssh/id_*
 ```
 
 ## Setup checklist
 
-Do these in order. Steps 4 to 7 are the same as [`new-machine.md`](new-machine.md).
+Do these in order. Steps 4 to 6 are the same as [`new-machine.md`](new-machine.md).
 
 **No CLI proxy on the Mac.** The hub is paused. Skip every `-hub` step: no
 `~/.claude-hub`, no `~/.codex-hub`, no bearer token. Claude and Codex sign in
@@ -125,12 +132,14 @@ brew install --cask tailscale
 ### 3. Tailscale
 
 Open Tailscale and sign in. Re-authorize `macbook-air-nikita`. Check that
-`ssh pi` works.
+`ssh pi@raspberrypi true` works (Tailscale SSH: no key needed). Then pull the
+staged files from the Pi ([Moving data](#moving-data)).
 
 ### 4. GitHub and tlnstack
 
 ```bash
-gh auth login                          # SSH protocol, like alarm
+gh auth login --git-protocol https     # HTTPS, like the existing remotes
+gh auth setup-git
 mkdir -p ~/Projects && cd ~/Projects
 gh repo clone NikitaTLN/tlnstack
 cd tlnstack && ./scripts/bootstrap.sh
@@ -162,14 +171,33 @@ usage credits.
 Both apps can call each other through the `ask-codex` and `ask-claude` skills.
 See [`claude-codex.md`](claude-codex.md).
 
-### 7. T3 Code (TLN2Code fork, macOS build)
+### 7. All projects
 
 ```bash
-cd ~/Projects && gh repo clone NikitaTLN/TLN2Code t3code
-cd t3code && git checkout personal
-node scripts/personal-fork.mjs configure    # if PR #1 is merged; else set remotes by hand
-curl -fsSL https://vite.plus | bash         # installs vp (it brings its own Node)
-vp i --frozen-lockfile
+curl -fsSL https://vite.plus | bash         # vp, for the T3 Code fork (brings its own Node)
+gh auth setup-git                           # HTTPS git uses gh's login
+restore-projects --check --setup --worktrees
+restore-projects --setup --worktrees
+```
+
+This clones every project in [`projects.tsv`](../projects.tsv) into
+`~/Projects`, runs each one's setup (`npm ci`, `vp i`, the fork's `upstream`
+remote, a Python venv), and makes a worktree for every open PR. Then put back
+the files git doesn't hold (`publish.token`, SSH keys), listed in
+[`projects.md`](projects.md#files-that-are-not-in-git).
+
+### 8. T3 Code (TLN2Code fork, macOS build)
+
+Put the exported settings in place **before the first launch**:
+
+```bash
+mkdir -p ~/.t3/userdata && rsync -a ~/migration/t3-settings/ ~/.t3/userdata/
+```
+
+Then build and install:
+
+```bash
+cd ~/Projects/t3code                        # cloned on `personal` by restore-projects
 vp run dist:desktop:dmg:arm64
 ```
 
@@ -178,31 +206,22 @@ vp run dist:desktop:dmg:arm64
   Developer ID and `T3CODE_APPLE_TEAM_ID`).
 - Open the `.dmg` and drag T3 Code to Applications. If macOS says it is
   damaged, run `xattr -cr "/Applications/T3 Code.app"`.
-- In T3 Code's provider settings, enable the native **Claude**
-  (`claudeAgent`) and **Codex** (`codex`) instances. Don't add hub instances.
+- The exported settings already enable the native **Claude** (`claudeAgent`)
+  and **Codex** (`codex`) instances. Don't add hub instances.
+- Add the projects and the TLN 2 Code scripts listed in
+  [`projects.md`](projects.md#t3-code-projects-to-add-on-the-mac).
+- Re-enter the OpenRouter voice key in Settings if you use cloud dictation.
 - Link the Pi as an environment in T3 Code for threads that must survive a
   reboot into Linux.
 - For each nightly, follow [`updating.md`](updating.md) §4, but build with
   `dist:desktop:dmg:arm64` in place of the AppImage step. The Linux-only
   variables (`T3CODE_DESKTOP_GLIBC_CEILING`, `TMPDIR`) are not needed on macOS.
 
-### 8. Projects
-
-```bash
-cd ~/Projects
-gh repo clone 9kantawis/onlytuz
-gh repo clone NikitaTLN/voxtype-flow
-gh repo clone NikitaTLN/Textio
-cd ~ && gh repo clone NikitaTLN/OD-Overlay-Website
-```
-
-Recreate worktrees only for branches you are working on (`git-workflow`
-skill). `onlytuz` releases are still Windows builds on `w1dget`.
-
 ### 9. Verify
 
 ```bash
 tlnstack --check && tstack-sync --check      # all current
+restore-projects --check --worktrees         # every project "fetch", every PR worktree "current"
 claude --version && codex --version
 ```
 

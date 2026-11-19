@@ -108,7 +108,18 @@ not in this repo. Set them up per machine:
 Get the token from an existing machine or from the credential store (see
 `docs/credentials.md`). Never commit it. `docs/machines.md` has the full paths.
 
-## 5. Install the remaining skills
+## 5. Projects and T3 Code settings
+
+```bash
+gh auth setup-git
+restore-projects --setup --worktrees
+```
+
+Clones every project in `projects.tsv`, runs its setup, and makes a worktree
+per open PR. Files git doesn't hold, the T3 Code settings export, and the
+other things to carry are in [`projects.md`](projects.md).
+
+## 6. Install the remaining skills
 
 - **Claude plugin skills** install themselves when Claude Code starts, from the
   plugin marketplace, into `~/.claude/skills/synced`.
@@ -117,13 +128,13 @@ Get the token from an existing machine or from the credential store (see
 - **The Matt Pocock library** is cloned by the bootstrap and read on demand. No
   install step; the installed `AGENTS.md` describes the triggers.
 
-## 6. T3 Code secrets
+## 7. T3 Code secrets
 
 In T3 Code, open **Settings → Secrets** on the machine running the server. From
 then on, agents call `request_secret` instead of asking in chat. See
 `docs/credentials.md`.
 
-## 7. Verify
+## 8. Verify
 
 ```bash
 tlnstack --check          # every target should say current

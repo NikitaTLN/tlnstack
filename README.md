@@ -17,6 +17,9 @@ It is a dotfiles-style repo. It tracks `main` directly, on purpose.
 | `scripts/tstack-sync.sh` | Keeps the third-party `t3dotgg/tstack` skills up to date. |
 | `scripts/bootstrap.sh` | Sets up a fresh machine in one go. |
 | `scripts/codex-hub-catalog` | Rebuilds the Codex Hub model catalog so new models appear. |
+| `projects.tsv` | Every project: repo, base branch, setup command. |
+| `scripts/restore-projects` | Clones every project, runs its setup, and makes a worktree per open PR. |
+| `scripts/t3-portable-settings` | Exports T3 Code settings for another machine (native providers, no secrets). |
 | `AGENTS.md` / `CLAUDE.md` | Instructions for an agent working **on this repo**. |
 
 ## Quick start on a new machine
@@ -36,6 +39,7 @@ tlnstack --check     # show what would change
 tlnstack             # install / update the instructions and skills
 tlnstack --capture   # pull a local edit back into this repo
 tstack-sync          # update Theo's skills from upstream
+restore-projects --setup --worktrees   # clone and set up every project
 ```
 
 On Linux and macOS, `tlnstack` links each harness file and skill to this repo,
@@ -76,6 +80,7 @@ Do not edit an installed copy directly.
 | [`docs/t3-code.md`](docs/t3-code.md) | The T3 Code features used by default. |
 | [`docs/new-machine.md`](docs/new-machine.md) | Setting up a fresh machine. |
 | [`docs/macos.md`](docs/macos.md) | macOS on the MacBook Air: what is in the cloud, what to move, setup. |
+| [`docs/projects.md`](docs/projects.md) | Every project, the T3 Code data in `~/.t3`, and the other things to carry. |
 | [`docs/claude-codex.md`](docs/claude-codex.md) | Claude and Codex calling each other from any app. |
 | [`docs/updating.md`](docs/updating.md) | Updating every tool on `alarm` and the Pi, with the known traps. |
 

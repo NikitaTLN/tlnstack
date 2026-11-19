@@ -1,0 +1,9 @@
+# path	repo	base	clone_args	setup (run in the checkout and in each PR worktree)	notes
+~/Projects/tlnstack	NikitaTLN/tlnstack	main	-	-	This repo. Tracks main directly.
+~/Projects/onlytuz	9kantawis/onlytuz	main	-	npm ci	Tauri + Vite overlays. Releases still build on the Windows PC. Copy publish.token by hand.
+~/Projects/t3code	NikitaTLN/TLN2Code	personal	--filter=blob:none	git remote get-url upstream >/dev/null 2>&1 || git remote add upstream https://github.com/pingdotgg/t3code.git; git config remote.upstream.fetch '+refs/heads/main:refs/remotes/upstream/main'; git config remote.upstream.pushurl no-push://upstream; git config remote.pushDefault origin; git fetch -q upstream --tags; vp i --frozen-lockfile	Personal T3 Code fork. Needs vp (Vite+). macOS build: vp run dist:desktop:dmg:arm64.
+~/Projects/Nikitway	Nikitway/Nikitway-Website	chore/import-project	-	cd nikitway-site && npm ci	Nikitway website (Astro + PHP server) and brand assets.
+~/Projects/voxtype-flow	NikitaTLN/voxtype-flow	main	-	-	Linux-only app (voxtype front end). Code only on macOS.
+~/Projects/Textio	NikitaTLN/Textio	main	-	-	Markdown editor. Not started; brief in PROMPT.md.
+~/Projects/NikitaTLN	NikitaTLN/NikitaTLN	main	-	-	GitHub profile README.
+~/Projects/OD-Overlay-Website	NikitaTLN/OD-Overlay-Website	main	-	python3 -m venv .venv && .venv/bin/pip install -q -r requirements.txt	ONLYDRAFTS landing page. On alarm it lives at ~/OD-Overlay-Website. SFTP needs ~/.ssh/od-overlay-website.

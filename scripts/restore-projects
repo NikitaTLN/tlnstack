@@ -1,0 +1,142 @@
+#!/usr/bin/env bash
+# restore-projects - put every project from projects.tsv on this machine.
+#
+# Usage: restore-projects [--check] [--setup] [--worktrees] [--only NAME]...
+#
+#   (default)    clone each missing project, fetch the ones already there.
+#   --check      show what would happen; change nothing.
+#   --setup      run each project's setup command (npm ci, vp i, ...) in the
+#                checkout and in every worktree this run creates.
+#   --worktrees  create a worktree for every OPEN pull request whose branch is
+#                in the repo, at <repo-parent>/<repo-name>-worktrees/<branch>.
+#                Merged and closed branches are left alone.
+#   --only NAME  limit to projects whose folder name is NAME (repeatable).
+#
+# Idempotent: run it again any time. It never deletes, resets, or switches the
+# branch of an existing checkout. Works with macOS's bash 3.2. Needs git and
+# an authenticated gh (`gh auth login`); clones use HTTPS with gh as the
+# credential helper. Run `gh auth setup-git` once so later fetches and pushes
+# authenticate the same way.
+set -euo pipefail
+
+self="${BASH_SOURCE[0]}"
+while [ -L "$self" ]; do
+  link=$(readlink "$self")
+  case "$link" in /*) self="$link" ;; *) self="$(dirname "$self")/$link" ;; esac
+done
+REPO="${TLNSTACK_REPO:-$(cd "$(dirname "$self")/.." && pwd)}"
+LIST="${TLNSTACK_PROJECTS:-$REPO/projects.tsv}"
+
+CHECK=0 SETUP=0 WORKTREES=0 ONLY=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --check) CHECK=1 ;;
+    --setup) SETUP=1 ;;
+    --worktrees) WORKTREES=1 ;;
+    --only) shift; ONLY="$ONLY ${1:?--only needs a name} " ;;
+    -h|--help) sed -n '2,18p' "$self" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) echo "restore-projects: unknown option: $1" >&2; exit 2 ;;
+  esac
+  shift
+done
+
+[ -f "$LIST" ] || { echo "restore-projects: $LIST not found" >&2; exit 1; }
+command -v gh >/dev/null || { echo "restore-projects: gh is required" >&2; exit 1; }
+
+say() { printf '%-10s %s\n' "$1" "$2"; }
+# git with gh as the HTTPS credential helper, whatever the global config says.
+ghgit() { git -c credential.helper= -c 'credential.helper=!gh auth git-credential' "$@" </dev/null; }
+run() { if [ "$CHECK" = 1 ]; then return 0; fi; "$@"; }
+
+run_setup() {
+  local dir="$1" cmd="$2"
+  [ "$SETUP" = 1 ] && [ "$cmd" != "-" ] || return 0
+  say setup "$dir"
+  [ "$CHECK" = 1 ] && return 0
+  if ! (cd "$dir" && bash -c "$cmd" </dev/null); then
+    say FAILED "setup in $dir (continuing)"
+    failures=$((failures+1))
+  fi
+}
+
+failures=0
+
+# The list and the branch loop read from fds 3 and 4, so setup commands that
+# read stdin (npm, pip) can't swallow them.
+while IFS=$'\t' read -r -u 3 path repo base clone_args setup notes || [ -n "${path:-}" ]; do
+  case "$path" in ''|'#'*) continue ;; esac
+  path="${path/#\~/$HOME}"
+  name=$(basename "$path")
+  if [ -n "$ONLY" ] && [[ "$ONLY" != *" $name "* ]]; then continue; fi
+
+  echo "== $name ($repo)"
+
+  if [ -e "$path/.git" ]; then
+    say fetch "$path"
+    run ghgit -C "$path" fetch --quiet --prune origin || say FAILED "fetch $path"
+  elif [ -e "$path" ] && [ -n "$(ls -A "$path" 2>/dev/null)" ]; then
+    say SKIP "$path exists but is not a git checkout; move it aside first"
+    failures=$((failures+1))
+    continue
+  else
+    say clone "$repo -> $path"
+    if [ "$CHECK" = 0 ]; then
+      mkdir -p "$(dirname "$path")"
+      extra=""
+      [ "$clone_args" = "-" ] || extra="$clone_args"
+      # HTTPS like the existing remotes; gh answers the credential prompt, so
+      # no SSH host key or key setup is needed on a fresh machine.
+      # shellcheck disable=SC2086 # extra is a word list on purpose
+      if ! ghgit clone --quiet $extra "https://github.com/$repo.git" "$path"; then
+        say FAILED "clone $repo (is gh logged in with access to it?)"
+        failures=$((failures+1))
+        continue
+      fi
+      if [ "$base" != "-" ] && [ "$(git -C "$path" branch --show-current)" != "$base" ]; then
+        git -C "$path" switch --quiet "$base"
+      fi
+    fi
+  fi
+
+  run_setup "$path" "$setup"
+
+  [ "$WORKTREES" = 1 ] || continue
+  wt_root="$(dirname "$path")/$name-worktrees"
+  branches=$(gh pr list -R "$repo" --state open --limit 100 \
+    --json headRefName,isCrossRepository \
+    -q '.[] | select(.isCrossRepository | not) | .headRefName' 2>/dev/null || true)
+  if [ -z "$branches" ]; then
+    say worktree "none (no open PRs)"
+    continue
+  fi
+  while IFS= read -r -u 4 branch; do
+    [ -n "$branch" ] || continue
+    # Capture first: `git ... | grep -q` fails under pipefail when grep exits
+    # early and git gets SIGPIPE.
+    existing=""
+    [ -e "$path/.git" ] && existing=$(git -C "$path" worktree list --porcelain)
+    if printf '%s\n' "$existing" | grep -qx "branch refs/heads/$branch"; then
+      say current "worktree $branch"
+      continue
+    fi
+    wt="$wt_root/$branch"
+    say worktree "$branch -> $wt"
+    [ "$CHECK" = 1 ] && continue
+    mkdir -p "$(dirname "$wt")"
+    if git -C "$path" show-ref --verify --quiet "refs/heads/$branch"; then
+      git -C "$path" worktree add --quiet "$wt" "$branch"
+    else
+      git -C "$path" worktree add --quiet --track -b "$branch" "$wt" "origin/$branch"
+    fi
+    run_setup "$wt" "$setup"
+  done 4<<EOF
+$branches
+EOF
+done 3< "$LIST"
+
+if [ "$CHECK" = 1 ]; then echo "(check only: nothing was changed)"; fi
+if [ "$failures" -gt 0 ]; then
+  echo "done with $failures problem(s); see FAILED / SKIP above" >&2
+  exit 1
+fi
+echo "done"

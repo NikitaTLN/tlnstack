@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+"""Export the T3 Code settings worth keeping to another machine.
+
+Usage: t3-portable-settings OUT_DIR [--from USERDATA]
+
+USERDATA defaults to ~/.t3/userdata. OUT_DIR gets:
+
+  client-settings.json  UI, fonts, speech words, browser and diff prefs (as is)
+  keybindings.json      key bindings (as is; they use `mod`, so they work on
+                        macOS and Linux)
+  themes/               custom themes (as is)
+  settings.json         server settings, made portable:
+                        - hub and API provider instances dropped, native Claude
+                          (`claudeAgent`) and Codex (`codex`) enabled
+                        - model selections and favorites moved to the native
+                          instances
+                        - secrets and machine-bound entries dropped: cloud
+                          speech credentials, the CLI-proxy usage source,
+                          per-project overrides (project ids differ per machine)
+
+Never copies state.sqlite/statev2.sqlite (threads, with this machine's paths),
+secrets/, logs, or caches. Put OUT_DIR's contents in ~/.t3/userdata on the new
+machine BEFORE T3 Code starts there for the first time.
+"""
+import json
+import shutil
+import sys
+from pathlib import Path
+
+NATIVE = {"claudeAgent_2": "claudeAgent", "codex_2": "codex", "codex_3": "codex"}
+DROP_KEYS = (
+    "cloudSpeechCredentials",
+    "usageLimitSources",
+    "projectScriptOverrides",
+    "projectSettingsOverrides",
+)
+
+
+def portable_settings(settings: dict) -> dict:
+    out = {k: v for k, v in settings.items() if k not in DROP_KEYS}
+
+    instances = {}
+    for key, inst in (settings.get("providerInstances") or {}).items():
+        if key in NATIVE:
+            continue
+        instances[key] = dict(inst)
+    for key, driver in (("claudeAgent", "claudeAgent"), ("codex", "codex")):
+        instances[key] = {"driver": driver, "enabled": True}
+    out["providerInstances"] = instances
+
+    for key in ("defaultModelSelection", "textGenerationModelSelection"):
+        sel = settings.get(key)
+        if isinstance(sel, dict) and sel.get("instanceId") in NATIVE:
+            out[key] = {**sel, "instanceId": NATIVE[sel["instanceId"]]}
+
+    favorites, seen = [], set()
+    for fav in settings.get("favorites") or []:
+        fav = {**fav, "provider": NATIVE.get(fav.get("provider"), fav.get("provider"))}
+        ident = (fav.get("provider"), fav.get("model"))
+        if ident not in seen:
+            seen.add(ident)
+            favorites.append(fav)
+    out["favorites"] = favorites
+    return out
+
+
+def main(argv: list[str]) -> int:
+    if not argv or argv[0] in ("-h", "--help"):
+        print(__doc__.strip())
+        return 0 if argv else 2
+    out_dir = Path(argv[0]).expanduser()
+    src = Path.home() / ".t3" / "userdata"
+    if len(argv) == 3 and argv[1] == "--from":
+        src = Path(argv[2]).expanduser()
+    elif len(argv) != 1:
+        print(__doc__.strip(), file=sys.stderr)
+        return 2
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for name in ("client-settings.json", "keybindings.json"):
+        if (src / name).is_file():
+            shutil.copy2(src / name, out_dir / name)
+            print(f"copied   {name}")
+    if (src / "themes").is_dir():
+        shutil.copytree(src / "themes", out_dir / "themes", dirs_exist_ok=True)
+        print("copied   themes/")
+
+    settings = json.loads((src / "settings.json").read_text())
+    (out_dir / "settings.json").write_text(json.dumps(portable_settings(settings), indent=2) + "\n")
+    print("wrote    settings.json (native providers, no secrets)")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
