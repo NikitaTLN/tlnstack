@@ -49,6 +49,23 @@
 - Waiting on a PR: `watch_pull_request`, not a sleep or polling loop.
 - Credentials: `request_secret`, not a chat ask. See below.
 
+# Browsers
+
+My browser is **Helium**. It has my sign-ins, extensions, and open tabs.
+
+- **Default: Helium through computer use.** Websites and online services
+  (GitHub, dashboards, accounts, consoles, docs, stores) go through Helium,
+  driven with computer use (screenshots, clicks, typing). This is most cases.
+- **Built-in browser only for a local server.** The harness's own in-app
+  browser pane is for an app running locally: a dev server or preview of the
+  project at `localhost`, `127.0.0.1`, or a `*.localhost` / `*.test` host.
+- When unsure which one, use Helium.
+- Reading a public page for facts needs no browser: a web fetch or search tool
+  is fine.
+- If computer use is not available (on `alarm`, or in a harness without it),
+  say so and ask before falling back to the built-in browser.
+- Sign-ins, passwords, 2FA, and CAPTCHAs in Helium stay mine.
+
 # Claude and Codex together
 
 Claude and Codex can call each other from any app. Use this when I ask for a

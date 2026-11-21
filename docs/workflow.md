@@ -85,6 +85,18 @@ Put the checklist in the PR body and the final report.
   viewing it.
 - UI changes get a before/after. Numbers get a chart. Use `html_render`.
 
+## Browsers
+
+| Target | Browser | How |
+| --- | --- | --- |
+| Online services and websites (most cases) | Helium, my own browser | computer use |
+| A local server: dev server or app preview on `localhost`, `127.0.0.1`, `*.localhost`, `*.test` | the harness's built-in browser | its browser tools |
+| A public page read for facts only | none | web fetch or search |
+
+Unsure means Helium. Without computer use (on `alarm`, or a harness that lacks
+it), say so and ask before using the built-in browser for an online service.
+Helium keeps my sign-ins; logins, 2FA, and CAPTCHAs are mine to do.
+
 ## Commit, push, PR, merge
 
 - Conventional commits: `type(scope): summary` (`feat`, `fix`, `perf`, `docs`,
